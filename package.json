@@ -1,0 +1,19 @@
+{
+  "name": "macareno",
+  "version": "0.1.0",
+  "description": "Text-based MMORPG server engine implementing the Pathfinder Roleplaying Game (1st Edition) OGL rules.",
+  "main": "src/index.js",
+  "scripts": {
+    "start": "node src/index.js",
+    "dev": "node --watch src/index.js",
+    "test": "node --test test/*.test.js"
+  },
+  "engines": {
+    "node": ">=18"
+  },
+  "license": "SEE LICENSE IN LICENSE",
+  "dependencies": {
+    "express": "^4.22.3",
+    "ws": "^8.22.0"
+  }
+}
