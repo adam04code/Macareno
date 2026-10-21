@@ -108,6 +108,11 @@ function allowedForSlot(featId, slot, char, classLevel) {
   if (slot.kind === 'combat') return f.types.includes('combat');
   if (slot.kind === 'wizard') return f.types.includes('metamagic') || f.types.includes('item-creation') || featId === 'spell-mastery';
   if (slot.kind === 'magus') return f.types.some((t) => ['combat', 'metamagic', 'item-creation'].includes(t));
+  if (slot.kind === 'bloodrager-bloodline') {
+    const bl = OPTIONS.OPTION_GROUPS['bloodrager-bloodline'].table[char.choices['bloodrager-bloodline']];
+    return !!bl && bl.feats.includes(featId);
+  }
+  if (slot.kind === 'precise-companion') return featId === 'precise-shot' || featId === 'outflank';
   if (slot.kind === 'bloodline') {
     const bl = OPTIONS.BLOODLINES[char.choices.bloodline] || OPTIONS.BLOODLINES.draconic;
     return (bl.feats || []).includes(featId);
@@ -140,7 +145,7 @@ function applyFeats(char, picks, slots, classLevel) {
       errors.push(`No feat slot available for ${def.name}`);
       continue;
     }
-    const ignorePrereqs = slot.kind === 'monk' || slot.ignorePrereqs;
+    const ignorePrereqs = slot.kind === 'monk' || slot.kind === 'precise-companion' || slot.ignorePrereqs;
     const pre = prerequisites.featPrereqs(char, pick.id, pick.param);
     const fatal = pre.failures.filter((f) => !ignorePrereqs || f.startsWith('Already') || f.startsWith('Requires a choice'));
     if (fatal.length) {
@@ -432,7 +437,10 @@ function initialSpells(char, classId, spells = {}) {
     if (first.length > allowed) errors.push(`Too many 1st-level spells in spellbook (${first.length}/${allowed})`);
     st.spellbook = [...new Set(list.filter((id) => SPELLS[id] && spellLevelFor(SPELLS[id], d.list) === 1))];
   }
-  if (d.style === 'spontaneous') {
+  if (d.preparesKnown) {
+    st.known = {};
+    spellcasting.autoPrepareKnown(char, classId);
+  } else if (d.style === 'spontaneous') {
     const limit = spellcasting.knownLimit(char, classId);
     st.known = {};
     for (const id of spells.known || []) {
@@ -630,6 +638,7 @@ function levelUp(char, spec, opts = {}) {
           errors.push(e.message);
         }
       }
+      if (d.preparesKnown) spellcasting.autoPrepareKnown(clone, cid);
     } else if (d.style === 'spontaneous') {
       for (const id of learns) {
         try {
@@ -732,7 +741,7 @@ function autoLevelSpec(char, classId, prefs = {}) {
       const f = FEATS[id];
       if (!f || f.param || f.grantsChoice || spec.feats.some((x) => x.id === id)) return false;
       if (!allowedForSlot(id, slot, probe, preview.newClassLevel)) return false;
-      return prerequisites.featPrereqs(probe, id).ok || (slot.kind === 'monk' && !probe.hasFeat(id));
+      return prerequisites.featPrereqs(probe, id).ok || ((slot.kind === 'monk' || slot.kind === 'precise-companion') && !probe.hasFeat(id));
     });
     if (pick) {
       spec.feats.push({ id: pick });

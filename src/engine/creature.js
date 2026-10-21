@@ -319,7 +319,7 @@ class Creature {
     return best;
   }
 
-  vulnerabilities() { return []; }
+  vulnerabilities() { return [...this.flags()].filter((f) => f.startsWith('vulnerable:')).map((f) => f.slice(11)); }
 
   // ------------------------------------------------------------ hit points
   maxHp() {

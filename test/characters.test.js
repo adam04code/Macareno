@@ -163,6 +163,13 @@ test('all base classes level to 20', () => {
     inquisitor: { scores: ARRAYS.wis, racialBonus: 'wis', deity: 'the-iron-judge', alignment: 'LN', choices: { 'inquisitor-domain': 'war' }, spells: { known: ['guidance', 'light', 'virtue', 'stabilize', 'bless', 'divine-favor'] } },
     oracle: { scores: ARRAYS.cha, racialBonus: 'cha', choices: { mystery: 'life', curse: 'wasting', revelation: 'life:channel' }, spells: { known: ['guidance', 'light', 'virtue', 'stabilize', 'bless', 'divine-favor'] } },
     witch: { scores: ARRAYS.int, racialBonus: 'int', choices: { hex: 'healing', patron: 'endurance', familiar: 'toad' }, spells: { spellbook: ['sleep', 'mage-armor', 'burning-hands', 'command', 'cure-light-wounds', 'ray-of-enfeeblement'] } },
+    arcanist: { scores: ARRAYS.int, racialBonus: 'int', choices: { 'arcanist-exploit': 'acid-jet' }, spells: { spellbook: ['magic-missile', 'shield', 'grease', 'mage-armor', 'color-spray', 'sleep'] } },
+    bloodrager: { alignment: 'CN', choices: { 'bloodrager-bloodline': 'draconic', dragonType: 'blue' } },
+    hunter: { scores: ARRAYS.wis, racialBonus: 'wis', choices: { companion: 'wolf' }, spells: { known: ['guidance', 'light', 'virtue', 'stabilize', 'entangle', 'magic-fang'] } },
+    shaman: { scores: ARRAYS.wis, racialBonus: 'wis', choices: { spirit: 'life', familiar: 'toad' } },
+    skald: { scores: ARRAYS.cha, racialBonus: 'cha', spells: { known: ['dancing-lights', 'detect-magic', 'light', 'mage-hand', 'cure-light-wounds', 'grease'] } },
+    slayer: { scores: ARRAYS.dex, racialBonus: 'dex' },
+    warpriest: { scores: ARRAYS.wis, racialBonus: 'wis', deity: 'the-iron-judge', alignment: 'LN', choices: { blessings: ['law', 'war'] } },
   };
   const { BASE_CLASSES } = require('../src/data/classes');
   for (const id of Object.keys(BASE_CLASSES)) assert.ok(setups[id], `level-20 test setup missing for ${id}`);

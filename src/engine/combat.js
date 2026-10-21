@@ -809,7 +809,10 @@ class Encounter {
     const spell = SPELLS[action.spell];
     if (!spell) throw err(`Unknown spell ${action.spell}`);
     if (caster.hasFlag('noCast') && !opts.spellLike) throw err('You cannot cast spells right now', 409);
-    if (caster.hasFlag('raging') && !opts.spellLike) throw err('Cannot cast spells while raging', 409);
+    // Bloodragers with blood casting may cast bloodrager spells while bloodraging.
+    const bloodCasting = caster.hasFeature && caster.hasFeature('blood-casting') && (!action.classId || action.classId === 'bloodrager');
+    if (caster.hasFlag('raging') && !opts.spellLike && !bloodCasting) throw err('Cannot cast spells while raging', 409);
+    if (bloodCasting && caster.hasFlag('raging') && !action.classId) action = { ...action, classId: 'bloodrager' };
     const isSla = !!opts.spellLike;
     let plan = null;
     let cl;
@@ -833,6 +836,14 @@ class Encounter {
       // Metamagic does not change save DCs, except Heighten Spell.
       const dcLevel = (action.metamagic || []).includes('heighten-spell') ? plan.level : plan.baseLevel;
       dc = spellcasting.spellDC(caster, spell, dcLevel, CLASSES[classId].spellcasting.ability);
+      // Arcanist reservoir: action.reservoir = 'cl' | 'dc' spends a point for +1 (+2 with potent magic).
+      if (action.reservoir && CLASSES[classId].spellcasting.reservoir) {
+        if (!['cl', 'dc'].includes(action.reservoir)) throw err("reservoir must be 'cl' or 'dc'");
+        if (!caster.spendResource('reservoir', 1)) throw err('No arcane reservoir points remaining');
+        const boost = caster.hasFlag('potentMagic') ? 2 : 1;
+        if (action.reservoir === 'cl') cl += boost;
+        else dc += boost;
+      }
     }
     // Action cost.
     const metamagic = action.metamagic || [];

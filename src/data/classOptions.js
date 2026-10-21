@@ -423,7 +423,31 @@ Object.assign(OPTION_GROUPS, {
   familiar: { table: APG.FAMILIARS, label: 'familiar', single: true },
 });
 
+// Advanced Class Guide classes.
+const ACG = require('./classOptionsAcg');
+Object.assign(OPTION_GROUPS, {
+  'arcanist-exploit': { table: ACG.ARCANIST_EXPLOITS, label: 'arcanist exploit', levelProg: 'arcanistLevel' },
+  'bloodrager-bloodline': { table: ACG.BLOODRAGER_BLOODLINES, label: 'bloodrager bloodline', single: true },
+  'slayer-talent': { table: ACG.SLAYER_TALENTS, label: 'slayer talent', levelProg: 'slayerLevel', advancedAt: 10 },
+  spirit: { table: ACG.SPIRITS, label: 'spirit', single: true },
+  'wandering-spirit': {
+    table: ACG.SPIRITS, label: 'wandering spirit', single: true,
+    validate: (c, id) => (c.choices.spirit === id ? 'The wandering spirit must differ from your spirit' : null),
+  },
+  'shaman-hex': { table: ACG.SHAMAN_HEXES, label: 'shaman hex', levelProg: 'shamanHexLevel' },
+  blessings: {
+    table: ACG.BLESSINGS, label: 'blessing',
+    validate: (c, id) => {
+      const deity = DEITIES[c.deity];
+      if (deity && !deity.domains.includes(id)) return `${deity.name} does not grant the ${id} blessing`;
+      const ax = c.axes();
+      if ((id === 'good' && !ax.good) || (id === 'evil' && !ax.evil) || (id === 'law' && !ax.lawful) || (id === 'chaos' && !ax.chaotic)) return `The ${id} blessing requires a matching alignment`;
+      return null;
+    },
+  },
+});
+
 const MYSTERY_SPELLS = (id) => (APG.MYSTERIES[id] ? APG.MYSTERIES[id].spells : {});
 const PATRON_SPELLS = (id) => (APG.PATRONS[id] ? Object.fromEntries(APG.PATRONS[id].spells.map((sp, i) => [2 * (i + 1), sp])) : {});
 
-module.exports = { MYSTERY_SPELLS, PATRON_SPELLS, HUNTERS_BONDS, NATURE_BONDS, DRUID_DOMAINS, grantCompanion, RAGE_POWERS, ROGUE_TALENTS, DOMAINS, ARCANE_SCHOOLS, BLOODLINES, MAGUS_ARCANA, MERCIES, COMBAT_STYLES, WEAPON_GROUPS, TERRAINS, FAVORED_ENEMY_TYPES, DRAGON_TYPES, DEITIES, OPTION_GROUPS };
+module.exports = { ANIMAL_ASPECTS: ACG.ANIMAL_ASPECTS, MYSTERY_SPELLS, PATRON_SPELLS, HUNTERS_BONDS, NATURE_BONDS, DRUID_DOMAINS, grantCompanion, RAGE_POWERS, ROGUE_TALENTS, DOMAINS, ARCANE_SCHOOLS, BLOODLINES, MAGUS_ARCANA, MERCIES, COMBAT_STYLES, WEAPON_GROUPS, TERRAINS, FAVORED_ENEMY_TYPES, DRAGON_TYPES, DEITIES, OPTION_GROUPS };

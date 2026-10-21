@@ -27,13 +27,17 @@ for (const [list, byLevel] of Object.entries(CLASS_LISTS)) {
   }
 }
 
-// Classes that use another class's list. An array means "the lower level of these lists" (hunter).
-const LIST_ALIASES = { sorcerer: 'wizard', arcanist: 'wizard', oracle: 'cleric', skald: 'bard', hunter: ['druid', 'ranger'] };
+// Classes that use another class's list. An object { lists, max } means "the lowest level among
+// these lists, capped at max" (hunter: druid or ranger; warpriest: the cleric list up to 6th).
+const LIST_ALIASES = {
+  sorcerer: 'wizard', arcanist: 'wizard', oracle: 'cleric', skald: 'bard',
+  hunter: { lists: ['druid', 'ranger'], max: 6 }, warpriest: { lists: ['cleric'], max: 6 },
+};
 
 function spellLevelFor(spell, list) {
   const key = LIST_ALIASES[list] || list;
-  if (Array.isArray(key)) {
-    const lvls = key.map((k) => spell.levels[k]).filter((l) => l !== undefined && (list !== 'hunter' || l <= 6));
+  if (typeof key === 'object') {
+    const lvls = key.lists.map((k) => spell.levels[k]).filter((l) => l !== undefined && l <= key.max);
     return lvls.length ? Math.min(...lvls) : null;
   }
   const lvl = spell.levels[key];

@@ -128,6 +128,17 @@ function grantedSpells(char, classId) {
     const cl = char.classLevel('oracle') + Math.floor((char.hitDice() - char.classLevel('oracle')) / 2);
     for (const [at, ids] of Object.entries((curse && curse.bonusSpells) || {})) if (cl >= Number(at)) for (const sp of ids) if (SPELLS[sp]) add(spellLevelFor(SPELLS[sp], 'cleric') ?? spellLevelFor(SPELLS[sp], 'wizard') ?? 1, sp);
   }
+  // Bloodrager bloodline spells at 7th, 10th, 13th and 16th level (spell levels 1-4).
+  if (d.bloodragerSpells && char.choices['bloodrager-bloodline']) {
+    const bl = OPTIONS.OPTION_GROUPS['bloodrager-bloodline'].table[char.choices['bloodrager-bloodline']];
+    const lvl = char.prog('bloodragerBloodlineLevel');
+    for (const [at, spell] of Object.entries((bl && bl.spells) || {})) if (lvl >= Number(at)) add([7, 10, 13, 16].indexOf(Number(at)) + 1, spell);
+  }
+  // Hunters add every summon nature's ally spell to their spells known.
+  if (d.knowsSummonNaturesAlly) {
+    const max = maxSpellLevelRaw(char, classId);
+    ['i', 'ii', 'iii', 'iv', 'v', 'vi'].forEach((n, i) => { if (i + 1 <= max) add(i + 1, `summon-natures-ally-${n}`); });
+  }
   if (d.bloodlineSpells && char.bloodline()) {
     const lvl = char.prog('sorcererBloodlineLevel');
     for (const [at, spell] of Object.entries(char.bloodline().spells)) {
@@ -152,8 +163,12 @@ function domainSpells(char, classId = 'cleric') {
   const d = sc(classId);
   const key = d && typeof d.domainSlots === 'string' ? d.domainSlots : 'domains';
   const v = char.choices[key];
-  for (const dId of Array.isArray(v) ? v : v ? [v] : []) {
-    const dom = OPTIONS.DOMAINS[dId];
+  const ids = Array.isArray(v) ? [...v] : v ? [v] : [];
+  // Shamans also prepare their wandering spirit's spirit magic.
+  if (key === 'spirit' && char.choices['wandering-spirit']) ids.push(char.choices['wandering-spirit']);
+  const table = key === 'spirit' ? OPTIONS.OPTION_GROUPS.spirit.table : OPTIONS.DOMAINS;
+  for (const dId of ids) {
+    const dom = table[dId];
     if (!dom) continue;
     dom.spells.forEach((s, i) => {
       if (SPELLS[s]) (out[i + 1] = out[i + 1] || []).push(s);
@@ -176,7 +191,7 @@ function availableSpells(char, classId) {
   };
   if (d.knowsWholeList) {
     for (const s of spellList(d.list)) push(spellLevelFor(s, d.list), s.id);
-  } else if (d.spellbook) {
+  } else if (d.spellbook && !d.preparesKnown) {
     for (const id of st.spellbook) {
       const s = SPELLS[id];
       if (s) push(spellLevelFor(s, d.list), id);
@@ -248,6 +263,7 @@ function forgetSpell(char, classId, spellId) {
 function prepareSpells(char, classId, list) {
   const d = sc(classId);
   if (!d) throw err(`${classId} is not a spellcasting class`);
+  if (d.preparesKnown) return prepareKnown(char, classId, list);
   if (d.style !== 'prepared') throw err(`${CLASSES[classId].name} casts spontaneously and does not prepare spells`);
   const slots = slotsPerDay(char, classId);
   const avail = availableSpells(char, classId);
@@ -292,6 +308,45 @@ function prepareSpells(char, classId, list) {
   state(char, classId).prepared = prepared;
   char.touch();
   return prepared;
+}
+
+/**
+ * Arcanists prepare a limited number of spellbook spells each day (their
+ * "spells known" for the day) and cast them with spontaneous slots.
+ */
+function prepareKnown(char, classId, list) {
+  const d = sc(classId);
+  const st = state(char, classId);
+  const limit = knownLimit(char, classId);
+  const known = {};
+  for (const entry of list) {
+    const id = typeof entry === 'string' ? entry : entry.spell;
+    const spell = SPELLS[id];
+    if (!spell) throw err(`Unknown spell: ${id}`);
+    const lvl = spellLevelFor(spell, d.list);
+    if (lvl === null) throw err(`${spell.name} is not on the ${d.list} list`);
+    if (lvl > 0 && !st.spellbook.includes(id)) throw err(`${spell.name} is not in your spellbook`);
+    if ((known[lvl] || []).includes(id)) continue;
+    known[lvl] = [...(known[lvl] || []), id];
+    if (!limit[lvl] || known[lvl].length > limit[lvl]) throw err(`Too many level ${lvl} spells prepared (limit ${limit[lvl] || 0})`);
+  }
+  st.known = known;
+  char.touch();
+  return known;
+}
+
+/** Fill any free daily preparations from the spellbook (arcanist defaults). */
+function autoPrepareKnown(char, classId) {
+  const d = sc(classId);
+  const st = state(char, classId);
+  const limit = knownLimit(char, classId) || [];
+  for (let l = 0; l < limit.length; l++) {
+    const have = st.known[l] || [];
+    const pool = l === 0 ? spellList(d.list, 0).map((s) => s.id) : st.spellbook.filter((id) => SPELLS[id] && spellLevelFor(SPELLS[id], d.list) === l);
+    for (const id of pool) if (have.length < (limit[l] || 0) && !have.includes(id)) have.push(id);
+    if (have.length) st.known[l] = have;
+  }
+  char.touch();
 }
 
 /** Find what casting `spellId` would consume. Throws if impossible. */
@@ -404,5 +459,5 @@ function summary(char) {
 
 module.exports = {
   slotsPerDay, maxSpellLevel, maxSpellLevelForTradition, knownLimit, availableSpells, learnSpell, forgetSpell, prepareSpells,
-  planCast, consume, recall, restoreSlots, spellDC, concentrationBonus, metamagicLevel, summary, state, domainSpells, grantedSpells, isOpposition,
+  prepareKnown, autoPrepareKnown, planCast, consume, recall, restoreSlots, spellDC, concentrationBonus, metamagicLevel, summary, state, domainSpells, grantedSpells, isOpposition,
 };

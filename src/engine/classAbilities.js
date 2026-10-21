@@ -726,6 +726,7 @@ const ABILITIES = {
 };
 
 Object.assign(ABILITIES, require('./abilitiesApg').ABILITIES);
+Object.assign(ABILITIES, require('./abilitiesAcg').ABILITIES);
 
 /** Channel energy burst (30 ft.). Positive heals living / harms undead; negative the reverse. */
 function channel(ctx, diceCount, dc, energy) {

@@ -88,7 +88,7 @@ class Monster extends Creature {
   sourceResistances() { return this.def.resist || {}; }
   sourceImmunities() { return this.def.immune || []; }
   sourceSr() { return this.def.sr || 0; }
-  vulnerabilities() { return this.def.vulnerable || []; }
+  vulnerabilities() { return [...(this.def.vulnerable || []), ...super.vulnerabilities()]; }
 
   hasFeat(id) { return (this.def.feats || []).includes(id); }
 

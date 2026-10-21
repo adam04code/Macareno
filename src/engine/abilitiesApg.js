@@ -22,7 +22,10 @@ const wl = (u) => u.prog('hexLevel');
 const chaMod = (u) => Math.max(0, u.abilityMod('cha'));
 const intMod = (u) => Math.max(0, u.abilityMod('int'));
 const revDC = (u) => 10 + half(ol(u)) + u.abilityMod('cha');
-const hexDC = (u) => 10 + half(wl(u)) + u.abilityMod('int');
+// Witches hex with Int, shamans with Wis.
+const hexStat = (u) => (u.classLevel('shaman') > u.classLevel('witch') ? 'wis' : 'int');
+const hexMod = (u) => Math.max(0, u.abilityMod(hexStat(u)));
+const hexDC = (u) => 10 + half(wl(u)) + u.abilityMod(hexStat(u));
 const onePlusPerFive = (u) => 1 + Math.floor(ol(u) / 5);
 
 /** Damage creatures in an area with a save for half; returns per-target results. */
@@ -467,7 +470,7 @@ const ABILITIES = {
     apply({ user, options }, t, s) {
       const pen = wl(user) >= 8 ? -4 : -2;
       const target = ['ac', 'abilityCheck', 'attack', 'save', 'skill'].includes(options.penalty) ? options.penalty : 'ac';
-      const rounds = s && s.success ? 1 : 3 + intMod(user);
+      const rounds = s && s.success ? 1 : 3 + hexMod(user);
       t.addEffect(makeEffect({ key: `hex:evil-eye:${target}`, name: `Evil Eye (${target})`, sourceId: user.id, remaining: rounds, modifiers: [mod(target, pen, 'untyped', 'Evil eye')], tags: ['mind-affecting', 'hex'] }));
       return { penalty: pen, on: target, rounds };
     },
@@ -498,7 +501,7 @@ const ABILITIES = {
       return { rounds: wl(user) };
     },
   }),
-  'hex-charm': hex('Charm', { save: 'will', apply({ user }, t, s) { if (s && s.success) return { note: 'saved' }; t.addCondition('charmed', Math.max(1, intMod(user)), { id: user.id, name: 'Charm hex' }); return { condition: 'charmed' }; } }),
+  'hex-charm': hex('Charm', { save: 'will', apply({ user }, t, s) { if (s && s.success) return { note: 'saved' }; t.addCondition('charmed', Math.max(1, hexMod(user)), { id: user.id, name: 'Charm hex' }); return { condition: 'charmed' }; } }),
   'hex-healing': hex('Healing', { side: 'ally', apply(ctx, t) { return { result: resolveSpell({ caster: ctx.user, spell: require('../data/spells').SPELLS[wl(ctx.user) >= 5 ? 'cure-moderate-wounds' : 'cure-light-wounds'], cl: wl(ctx.user), dc: 0, targets: [t], rng: ctx.rng }).results[0] }; } }),
   'major-healing': hex('Major Healing', { side: 'ally', apply(ctx, t) { return { result: resolveSpell({ caster: ctx.user, spell: require('../data/spells').SPELLS[wl(ctx.user) >= 15 ? 'cure-critical-wounds' : 'cure-serious-wounds'], cl: wl(ctx.user), dc: 0, targets: [t], rng: ctx.rng }).results[0] }; } }),
   ward: hex('Ward', {
@@ -531,8 +534,8 @@ const ABILITIES = {
       return { rounds: wl(user) };
     },
   }),
-  retribution: hex('Retribution', { save: 'will', oncePerDay: false, apply({ user }, t, s) { if (s && s.success) return { note: 'saved' }; t.addEffect(makeEffect({ key: 'hex:retribution', name: 'Retribution', sourceId: user.id, remaining: Math.max(1, intMod(user)), flags: ['retribution'], tags: ['hex'] })); return { rounds: Math.max(1, intMod(user)) }; } }),
-  'waxen-image': hex('Waxen Image', { save: 'will', apply({ user }, t, s) { if (s && s.success) return { note: 'saved' }; t.addCondition('dominated', 1, { id: user.id, name: 'Waxen image' }); return { condition: 'dominated', uses: Math.max(1, intMod(user)) }; } }),
+  retribution: hex('Retribution', { save: 'will', oncePerDay: false, apply({ user }, t, s) { if (s && s.success) return { note: 'saved' }; t.addEffect(makeEffect({ key: 'hex:retribution', name: 'Retribution', sourceId: user.id, remaining: Math.max(1, hexMod(user)), flags: ['retribution'], tags: ['hex'] })); return { rounds: Math.max(1, hexMod(user)) }; } }),
+  'waxen-image': hex('Waxen Image', { save: 'will', apply({ user }, t, s) { if (s && s.success) return { note: 'saved' }; t.addCondition('dominated', 1, { id: user.id, name: 'Waxen image' }); return { condition: 'dominated', uses: Math.max(1, hexMod(user)) }; } }),
   'death-curse': hex('Death Curse', {
     save: 'will',
     apply({ user }, t, s) {
@@ -549,4 +552,4 @@ const ABILITIES = {
   },
 };
 
-module.exports = { ABILITIES, throwBomb, mutagenMods };
+module.exports = { ABILITIES, throwBomb, mutagenMods, hex, areaDamage, hexDC };

@@ -199,12 +199,26 @@ class Character extends Creature {
     return this.choices.bloodline ? OPTIONS.BLOODLINES[this.choices.bloodline] : null;
   }
 
+  /** Bloodline powers in effect: the sorcerer bloodline and the bloodrager bloodline, merged. */
   bloodlinePowers() {
+    const parts = [];
     const bl = this.bloodline();
     const ddLevel = this.classLevel('dragon-disciple');
-    if (bl && bl.powers && (this.classLevel('sorcerer') > 0 || ddLevel > 0)) return bl.powers(this);
-    if (!bl && ddLevel > 0) return OPTIONS.BLOODLINES.draconic.powers(this);
-    return null;
+    if (bl && bl.powers && (this.classLevel('sorcerer') > 0 || ddLevel > 0)) parts.push(bl.powers(this));
+    else if (!bl && ddLevel > 0) parts.push(OPTIONS.BLOODLINES.draconic.powers(this));
+    const rb = OPTIONS.OPTION_GROUPS['bloodrager-bloodline'].table[this.choices['bloodrager-bloodline']];
+    if (rb && this.classLevel('bloodrager') > 0) parts.push(rb.powers(this));
+    if (parts.length < 2) return parts[0] || null;
+    const out = { flags: [], modifiers: [], resistances: {}, naturalAttacks: [], abilities: [], sr: 0 };
+    for (const p of parts) {
+      out.flags.push(...(p.flags || []));
+      out.modifiers.push(...(p.modifiers || []));
+      out.naturalAttacks.push(...(p.naturalAttacks || []));
+      out.abilities.push(...(p.abilities || []));
+      for (const [k, v] of Object.entries(p.resistances || {})) out.resistances[k] = Math.max(out.resistances[k] || 0, v);
+      out.sr = Math.max(out.sr, p.sr || 0);
+    }
+    return out;
   }
 
   dragonEnergy() {

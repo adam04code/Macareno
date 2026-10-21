@@ -102,6 +102,8 @@ function missChance(attacker, defender, profile) {
   if (defender.hasFlag('invisible') && !attacker.hasFlag('seeInvisible') && !attacker.hasFlag('trueSeeing')) pct = Math.max(pct, 50);
   if (attacker.hasFlag('blind')) pct = Math.max(pct, 50);
   if (defender.hasFlag('outlined')) pct = 0;
+  // Attacker-side miss chance (storm burst).
+  pct = Math.max(pct, attacker.flagValue('attackMissChance') || 0);
   if (profile.ranged && attacker.hasFeat && attacker.hasFeat('improved-precise-shot') && pct < 50) pct = 0;
   return pct;
 }
