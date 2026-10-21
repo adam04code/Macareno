@@ -5,20 +5,14 @@ const { mod } = require('./modifiers');
 const T = require('./tables');
 const { SKILLS, SIZES } = require('../data/core');
 const { RACES } = require('../data/races');
-const { CLASSES } = require('../data/classes');
+const { CLASSES, effectiveClass } = require('../data/classes');
 const { FEATURES } = require('../data/features');
 const { FEATS } = require('../data/feats');
 const OPTIONS = require('../data/classOptions');
 const { ITEMS, WEAPON_SPECIALS, ARMOR_SPECIALS, weaponDamageForSize } = require('../data/equipment');
 
 // Map a class "choices" key to the option table it draws from.
-const OPTION_TABLES = {
-  'rage-power': OPTIONS.RAGE_POWERS,
-  'rogue-talent': OPTIONS.ROGUE_TALENTS,
-  domains: OPTIONS.DOMAINS,
-  'magus-arcana': OPTIONS.MAGUS_ARCANA,
-  mercy: OPTIONS.MERCIES,
-};
+const OPTION_TABLES = Object.fromEntries(Object.entries(OPTIONS.OPTION_GROUPS).map(([k, g]) => [k, g.table]));
 
 const MONK_UNARMED = {
   medium: ['1d6', '1d6', '1d6', '1d8', '1d8', '1d8', '1d8', '1d10', '1d10', '1d10', '1d10', '2d6', '2d6', '2d6', '2d6', '2d8', '2d8', '2d8', '2d8', '2d10'],
@@ -77,11 +71,31 @@ class Character extends Creature {
     return c ? c.level : 0;
   }
 
+  /** Class definition for one of this character's classes, with its archetypes applied. */
+  classDef(idOrEntry) {
+    const entry = typeof idOrEntry === 'string' ? this.classes.find((x) => x.id === idOrEntry) || { id: idOrEntry } : idOrEntry;
+    return effectiveClass(entry.id, entry.archetypes);
+  }
+
+  archetypes(classId) {
+    const c = this.classes.find((x) => x.id === classId);
+    return (c && c.archetypes) || [];
+  }
+
+  hasArchetype(id) {
+    return this.classes.some((c) => (c.archetypes || []).includes(id));
+  }
+
+  hasOption(group, id) {
+    const v = this.choices[group];
+    return Array.isArray(v) ? v.includes(id) : v === id;
+  }
+
   /** Sum a named progression across every class the character has. */
   prog(name) {
     let total = 0;
     for (const c of this.classes) {
-      const def = CLASSES[c.id];
+      const def = this.classDef(c);
       const fn = def.progressions && def.progressions[name];
       if (fn) total += fn(c.level);
     }
@@ -122,7 +136,7 @@ class Character extends Creature {
     if (this._cache && this._cache.features) return this._cache.features;
     const seen = new Map();
     for (const c of this.classes) {
-      const def = CLASSES[c.id];
+      const def = this.classDef(c);
       for (let l = 1; l <= c.level; l++) {
         for (const key of def.features[l] || []) {
           if (!seen.has(key)) seen.set(key, { key, classId: c.id, level: l });
@@ -141,11 +155,15 @@ class Character extends Creature {
 
   /** Every selected class option (rage powers, talents, domains...) with its definition. */
   selectedOptions() {
+    if (this._cache && this._cache.options) return this._cache.options;
     const out = [];
-    for (const [key, table] of Object.entries(OPTION_TABLES)) {
-      for (const id of this.choices[key] || []) if (table[id]) out.push({ group: key, id, def: table[id] });
+    for (const [key, group] of Object.entries(OPTIONS.OPTION_GROUPS)) {
+      const v = this.choices[key];
+      const ids = Array.isArray(v) ? v : v ? [v] : [];
+      for (const id of ids) if (group.table[id]) out.push({ group: key, id, def: group.table[id] });
     }
-    if (this.choices.school && OPTIONS.ARCANE_SCHOOLS[this.choices.school]) out.push({ group: 'school', id: this.choices.school, def: OPTIONS.ARCANE_SCHOOLS[this.choices.school] });
+    this._cache = this._cache || {};
+    this._cache.options = out;
     return out;
   }
 
@@ -237,11 +255,11 @@ class Character extends Creature {
       if (sla.minCha && this.ability('cha') < sla.minCha) continue;
       out[`sla:${sla.spell}`] = { max: sla.perDay, per: 'day' };
     }
-    // Domain / school powers usable 3 + ability mod times per day.
-    const touchPowers = this.activatedAbilities().filter((a) => ['lightning-arc', 'touch-of-chaos', 'bleeding-touch', 'destructive-smite', 'acid-dart', 'touch-of-evil', 'fire-bolt', 'touch-of-good', 'rebuke-death', 'touch-of-law', 'bit-of-luck', 'strength-surge-domain', 'copycat', 'battle-rage', 'icicle', 'force-missile', 'dazing-touch', 'blinding-ray', 'grave-touch', 'telekinetic-fist', 'heavenly-fire', 'corrupting-touch', 'elemental-ray', 'laughing-touch', 'touch-of-destiny'].includes(a));
-    for (const a of touchPowers) {
-      const abil = ['force-missile', 'dazing-touch', 'blinding-ray', 'grave-touch', 'telekinetic-fist', 'acid-dart'].includes(a) && this.classLevel('wizard') ? 'int' : this.classLevel('sorcerer') && !this.classLevel('cleric') ? 'cha' : 'wis';
-      out[`power:${a}`] = { max: 3 + Math.max(0, this.baseAbilityMod(abil)), per: 'day' };
+    // Powers usable a number of times per day (domain, school, bloodline, hexes...).
+    const { ABILITIES } = require('./classAbilities');
+    for (const a of this.activatedAbilities()) {
+      const ab = ABILITIES[a];
+      if (ab && ab.perDay && !out[`power:${a}`]) out[`power:${a}`] = { max: ab.perDay(this), per: 'day' };
     }
     return out;
   }
@@ -321,12 +339,12 @@ class Character extends Creature {
   // ------------------------------------------------------------ class math
   bab() {
     if (this.hasFlag('babEqualsLevel')) return this.hitDice();
-    return this.classes.reduce((s, c) => s + T.BAB[CLASSES[c.id].bab](c.level), 0);
+    return this.classes.reduce((s, c) => s + T.BAB[this.classDef(c).bab](c.level), 0);
   }
 
   baseSave(type) {
     return this.classes.reduce((s, c) => {
-      const def = CLASSES[c.id];
+      const def = this.classDef(c);
       return s + T.SAVES[def.saveFormula][def.saves[type]](c.level);
     }, 0);
   }
@@ -334,7 +352,7 @@ class Character extends Creature {
   cmbBase() {
     if (this.hasFeature('maneuver-training')) {
       const monk = this.classLevel('monk');
-      return monk + this.classes.filter((c) => c.id !== 'monk').reduce((s, c) => s + T.BAB[CLASSES[c.id].bab](c.level), 0);
+      return monk + this.classes.filter((c) => c.id !== 'monk').reduce((s, c) => s + T.BAB[this.classDef(c).bab](c.level), 0);
     }
     return this.bab();
   }
@@ -361,7 +379,7 @@ class Character extends Creature {
 
   classSkills() {
     const set = new Set();
-    for (const c of this.classes) CLASSES[c.id].classSkills.forEach((s) => set.add(s));
+    for (const c of this.classes) this.classDef(c).classSkills.forEach((s) => set.add(s));
     for (const opt of this.selectedOptions()) if (opt.def.classSkills) opt.def.classSkills.forEach((s) => set.add(s));
     const bl = this.bloodline();
     if (bl && bl.classSkill) set.add(bl.classSkill);
@@ -374,7 +392,7 @@ class Character extends Creature {
   }
 
   skillPointsPerLevel(classId) {
-    const def = CLASSES[classId];
+    const def = this.classDef(classId);
     return Math.max(1, def.skillRanks + this.baseAbilityMod('int')) + (this.raceDef().skillRanksPerLevel || 0);
   }
 
@@ -398,7 +416,6 @@ class Character extends Creature {
     const ab = this.abilityMod(def.ability);
     let acp = 0;
     if (def.acp) acp = this.armorCheckPenalty();
-    if (id === 'swim' && acp) acp *= 2;
     const sizeMod = id === 'stealth' ? SIZES[this.size()].stealth : id === 'fly' ? SIZES[this.size()].fly : 0;
     const r = this.stat(['skill', `skill.${id}`], tags);
     // Raging restricts Int/Dex/Cha skills except a few.
@@ -467,7 +484,7 @@ class Character extends Creature {
     const armor = new Set();
     const shields = new Set();
     for (const c of this.classes) {
-      const p = CLASSES[c.id].proficiencies || {};
+      const p = this.classDef(c).proficiencies || {};
       // Prestige classes only grant proficiencies; base classes grant at 1st level.
       (p.weapons || []).forEach((w) => weapons.add(w));
       (p.armor || []).forEach((a) => armor.add(a));
@@ -571,7 +588,7 @@ class Character extends Creature {
   baseSpeed() {
     const r = this.raceDef();
     let s = r.speed;
-    const heavyish = (this.armorType() === 'medium' && this.armorTrainingLevel() < 2) || (this.armorType() === 'heavy' && this.armorTrainingLevel() < 3) || this.load() !== 'light';
+    const heavyish = (this.armorType() === 'medium' && this.armorTrainingLevel() < 1) || (this.armorType() === 'heavy' && this.armorTrainingLevel() < 2) || this.load() !== 'light';
     if (heavyish && !r.speedNeverReduced) s = T.reducedSpeed(s);
     return s;
   }

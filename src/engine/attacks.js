@@ -359,7 +359,7 @@ function resolveAttack(attacker, defender, profile, ctx = {}) {
     dmg.packets[0].amount -= dmg.precision;
     out.note = 'fortification negated precision damage';
   }
-  const applied = applyDamage(defender, dmg.packets, { ignoreResist: ctx.ignoreFireResist });
+  const applied = applyDamage(defender, dmg.packets);
   out.damage = applied.total;
   out.damageDetails = applied.details;
   out.sneakAttack = dmg.precision || 0;

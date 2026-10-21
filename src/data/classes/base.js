@@ -30,7 +30,7 @@ const CLASSES = {
     },
     progressions: {
       rageRounds: (l) => 4 + 2 * (l - 1), trapSense: every(3, 3), uncannyDodge: () => 1,
-      drUntyped: every(7, 3), ragePowers: (l) => Math.floor(l / 2), improvedUncannyDodgeLevels: (l) => (l >= 5 ? l : 0),
+      drUntyped: every(7, 3), ragePowers: (l) => Math.floor(l / 2), ragePowerLevel: (l) => l, improvedUncannyDodgeLevels: (l) => (l >= 5 ? l : 0),
     },
     choices: { 'rage-power': { list: 'ragePowers' } },
   },
@@ -59,7 +59,7 @@ const CLASSES = {
     proficiencies: { weapons: ['simple', 'deity-favored'], armor: ['light', 'medium'], shields: ['shield'] },
     spellcasting: { tradition: 'divine', style: 'prepared', ability: 'wis', list: 'cleric', perDay: T.FULL_PREPARED, knowsWholeList: true, domainSlots: true, spontaneous: 'cure-or-inflict' },
     features: { 1: ['aura', 'channel-energy', 'domains', 'orisons', 'spontaneous-casting'] },
-    progressions: { channelDice: odd, channelUses: () => 3 },
+    progressions: { channelDice: odd, channelUses: () => 3, domainLevel: (l) => l },
     choices: { domains: { list: 'domains', count: 2 } },
   },
 
@@ -141,7 +141,7 @@ const CLASSES = {
     },
     progressions: {
       sneakAttack: odd, trapSense: every(3, 3), trapfinding: (l) => Math.max(1, Math.floor(l / 2)), evasion: (l) => (l >= 2 ? 1 : 0),
-      uncannyDodge: (l) => (l >= 4 ? 1 : 0), improvedUncannyDodgeLevels: (l) => (l >= 8 ? l : 0), rogueLevel: (l) => l,
+      uncannyDodge: (l) => (l >= 4 ? 1 : 0), improvedUncannyDodgeLevels: (l) => (l >= 8 ? l : 0), rogueLevel: (l) => l, rogueTalentLevel: (l) => l,
     },
     choices: { 'rogue-talent': { list: 'rogueTalents' } },
   },

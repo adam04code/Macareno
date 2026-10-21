@@ -70,19 +70,19 @@ const ROGUE_TALENTS = {
 const DOMAINS = {
   air: o('Air', 'Lightning Arc (1st: ranged touch 30 ft., 1d6 + 1 per two cleric levels electricity, 3 + Wis/day); Electricity Resistance 10 (6th), 20 (12th), immune (20th).', {
     spells: ['obscuring-mist', 'wind-wall', 'gaseous-form', 'air-walk', 'control-winds', 'chain-lightning', 'elemental-body-iv', 'whirlwind', 'elemental-swarm'],
-    abilities: ['lightning-arc'], resistances: (c) => (c.classLevel('cleric') >= 20 ? { electricity: Infinity } : c.classLevel('cleric') >= 12 ? { electricity: 20 } : c.classLevel('cleric') >= 6 ? { electricity: 10 } : {}),
+    abilities: ['lightning-arc'], resistances: (c) => (c.prog('domainLevel') >= 20 ? { electricity: Infinity } : c.prog('domainLevel') >= 12 ? { electricity: 20 } : c.prog('domainLevel') >= 6 ? { electricity: 10 } : {}),
   }),
   chaos: o('Chaos', 'Touch of Chaos (target takes the worse of two d20 rolls for 1 round); Chaos Blade (8th).', { spells: ['protection-from-law', 'align-weapon', 'magic-circle-against-law', 'chaos-hammer', 'dispel-law', 'animate-objects', 'word-of-chaos', 'cloak-of-chaos', 'summon-monster-ix'], abilities: ['touch-of-chaos'] }),
   death: o('Death', "Bleeding Touch (1d6 bleed for 1/2 level rounds); Death's Embrace (8th: healed by channeled negative energy).", { spells: ['cause-fear', 'death-knell', 'animate-dead', 'death-ward', 'slay-living', 'create-undead', 'destruction', 'create-greater-undead', 'wail-of-the-banshee'], abilities: ['bleeding-touch'] }),
   destruction: o('Destruction', 'Destructive Smite (+1/2 level morale damage, 3 + Wis/day); Destructive Aura (8th).', { spells: ['true-strike', 'shatter', 'rage', 'inflict-critical-wounds', 'shout', 'harm', 'disintegrate', 'earthquake', 'implosion'], abilities: ['destructive-smite'] }),
-  earth: o('Earth', 'Acid Dart (1d6 + 1 per two levels acid, ranged touch); Acid Resistance 10/20/immune.', { spells: ['magic-stone', 'soften-earth-and-stone', 'stone-shape', 'spike-stones', 'wall-of-stone', 'stoneskin', 'elemental-body-iv', 'earthquake', 'elemental-swarm'], abilities: ['acid-dart'], resistances: (c) => (c.classLevel('cleric') >= 20 ? { acid: Infinity } : c.classLevel('cleric') >= 12 ? { acid: 20 } : c.classLevel('cleric') >= 6 ? { acid: 10 } : {}) }),
+  earth: o('Earth', 'Acid Dart (1d6 + 1 per two levels acid, ranged touch); Acid Resistance 10/20/immune.', { spells: ['magic-stone', 'soften-earth-and-stone', 'stone-shape', 'spike-stones', 'wall-of-stone', 'stoneskin', 'elemental-body-iv', 'earthquake', 'elemental-swarm'], abilities: ['acid-dart'], resistances: (c) => (c.prog('domainLevel') >= 20 ? { acid: Infinity } : c.prog('domainLevel') >= 12 ? { acid: 20 } : c.prog('domainLevel') >= 6 ? { acid: 10 } : {}) }),
   evil: o('Evil', 'Touch of Evil (target sickened, 1/2 level rounds); Scythe of Evil (8th).', { spells: ['protection-from-good', 'align-weapon', 'magic-circle-against-good', 'unholy-blight', 'dispel-good', 'create-undead', 'blasphemy', 'unholy-aura', 'summon-monster-ix'], abilities: ['touch-of-evil'] }),
-  fire: o('Fire', 'Fire Bolt (1d6 + 1 per two levels fire, ranged touch); Fire Resistance 10/20/immune.', { spells: ['burning-hands', 'produce-flame', 'fireball', 'wall-of-fire', 'fire-shield', 'fire-seeds', 'elemental-body-iv', 'incendiary-cloud', 'elemental-swarm'], abilities: ['fire-bolt'], resistances: (c) => (c.classLevel('cleric') >= 20 ? { fire: Infinity } : c.classLevel('cleric') >= 12 ? { fire: 20 } : c.classLevel('cleric') >= 6 ? { fire: 10 } : {}) }),
+  fire: o('Fire', 'Fire Bolt (1d6 + 1 per two levels fire, ranged touch); Fire Resistance 10/20/immune.', { spells: ['burning-hands', 'produce-flame', 'fireball', 'wall-of-fire', 'fire-shield', 'fire-seeds', 'elemental-body-iv', 'incendiary-cloud', 'elemental-swarm'], abilities: ['fire-bolt'], resistances: (c) => (c.prog('domainLevel') >= 20 ? { fire: Infinity } : c.prog('domainLevel') >= 12 ? { fire: 20 } : c.prog('domainLevel') >= 6 ? { fire: 10 } : {}) }),
   glory: o('Glory', 'Undead take +1d6 from channel; Touch of Glory (+level to Cha check).', { spells: ['shield-of-faith', 'bless-weapon', 'searing-light', 'holy-smite', 'righteous-might', 'undeath-to-death', 'holy-sword', 'holy-aura', 'gate'] }),
   good: o('Good', 'Touch of Good (+1/2 level sacred bonus on attacks, skills, ability checks, saves for 1 round); Holy Lance (8th).', { spells: ['protection-from-evil', 'align-weapon', 'magic-circle-against-evil', 'holy-smite', 'dispel-evil', 'blade-barrier', 'holy-word', 'holy-aura', 'summon-monster-ix'], abilities: ['touch-of-good'] }),
   healing: o('Healing', 'Healer\'s Blessing (6th: cure spells +50%); Rebuke Death (touch heals 1d4 + 1 per two levels to dying creatures).', {
     spells: ['cure-light-wounds', 'cure-moderate-wounds', 'cure-serious-wounds', 'cure-critical-wounds', 'breath-of-life', 'heal', 'regenerate', 'mass-cure-critical-wounds', 'mass-heal'],
-    flags: (c) => (c.classLevel('cleric') >= 6 ? ['healersBlessing'] : []), abilities: ['rebuke-death'],
+    flags: (c) => (c.prog('domainLevel') >= 6 ? ['healersBlessing'] : []), abilities: ['rebuke-death'],
   }),
   knowledge: o('Knowledge', 'All Knowledge skills are class skills; Lore Keeper (touch: Knowledge check with Wis + level).', { spells: ['comprehend-languages', 'detect-thoughts', 'speak-with-dead', 'divination', 'true-seeing', 'find-the-path', 'legend-lore', 'discern-location', 'foresight'], classSkills: ['knowledge-arcana', 'knowledge-dungeoneering', 'knowledge-engineering', 'knowledge-geography', 'knowledge-history', 'knowledge-local', 'knowledge-nature', 'knowledge-nobility', 'knowledge-planes', 'knowledge-religion'] }),
   law: o('Law', 'Touch of Law (target treats all d20 rolls as 11 for 1 round); Staff of Order (8th).', { spells: ['protection-from-chaos', 'align-weapon', 'magic-circle-against-chaos', 'orders-wrath', 'dispel-chaos', 'hold-monster', 'dictum', 'shield-of-law', 'summon-monster-ix'], abilities: ['touch-of-law'] }),
@@ -90,30 +90,30 @@ const DOMAINS = {
   magic: o('Magic', 'Hand of the Acolyte (throw a melee weapon 30 ft. using Wis); Dispelling Touch (8th).', { spells: ['identify', 'magic-mouth', 'dispel-magic', 'imbue-with-spell-ability', 'spell-resistance', 'antimagic-field', 'spell-turning', 'protection-from-spells', 'mages-disjunction'] }),
   protection: o('Protection', '+1 resistance bonus on saves (+1 per five levels); Resistant Touch; Aura of Protection (8th).', {
     spells: ['sanctuary', 'shield-other', 'protection-from-energy', 'spell-immunity', 'spell-resistance', 'antimagic-field', 'repulsion', 'mind-blank', 'prismatic-sphere'],
-    modifiers: (c) => [mod('save', 1 + Math.floor(c.classLevel('cleric') / 5), 'resistance', 'Protection domain')],
+    modifiers: (c) => [mod('save', 1 + Math.floor(c.prog('domainLevel') / 5), 'resistance', 'Protection domain')],
   }),
   strength: o('Strength', 'Strength Surge (touch: +1/2 level enhancement to melee attacks, CMB, Str skills, Str checks for 1 round); Might of the Gods (8th).', { spells: ['enlarge-person', 'bulls-strength', 'magic-vestment', 'spell-immunity', 'righteous-might', 'stoneskin', 'grasping-hand', 'clenched-fist', 'crushing-hand'], abilities: ['strength-surge-domain'] }),
   sun: o('Sun', 'Sun\'s Blessing (channel adds cleric level to damage vs undead, undead lose channel resistance); Nimbus of Light (8th).', { spells: ['endure-elements', 'heat-metal', 'searing-light', 'fire-shield', 'flame-strike', 'fire-seeds', 'sunbeam', 'sunburst', 'prismatic-sphere'], flags: () => ['sunsBlessing'] }),
   travel: o('Travel', '+10 ft. base speed; Agile Feet (ignore difficult terrain 1 round); Dimensional Hop (8th).', { spells: ['longstrider', 'locate-object', 'fly', 'dimension-door', 'teleport', 'find-the-path', 'greater-teleport', 'phase-door', 'astral-projection'], modifiers: () => [mod('speed', 10, 'enhancement', 'Travel domain')] }),
   trickery: o('Trickery', 'Bluff, Disguise and Stealth are class skills; Copycat (mirror image-like duplicate).', { spells: ['disguise-self', 'invisibility', 'nondetection', 'confusion', 'false-vision', 'mislead', 'screen', 'mass-invisibility', 'time-stop'], classSkills: ['bluff', 'disguise', 'stealth'], abilities: ['copycat'] }),
   war: o('War', 'Battle Rage (touch: +1/2 level damage on melee attacks for 1 round); Weapon Master (8th: bonus combat feat).', { spells: ['magic-weapon', 'spiritual-weapon', 'magic-vestment', 'divine-power', 'flame-strike', 'blade-barrier', 'power-word-blind', 'power-word-stun', 'power-word-kill'], abilities: ['battle-rage'] }),
-  water: o('Water', 'Icicle (1d6 + 1 per two levels cold, ranged touch); Cold Resistance 10/20/immune.', { spells: ['obscuring-mist', 'fog-cloud', 'water-breathing', 'control-water', 'ice-storm', 'cone-of-cold', 'elemental-body-iv', 'horrid-wilting', 'elemental-swarm'], abilities: ['icicle'], resistances: (c) => (c.classLevel('cleric') >= 20 ? { cold: Infinity } : c.classLevel('cleric') >= 12 ? { cold: 20 } : c.classLevel('cleric') >= 6 ? { cold: 10 } : {}) }),
+  water: o('Water', 'Icicle (1d6 + 1 per two levels cold, ranged touch); Cold Resistance 10/20/immune.', { spells: ['obscuring-mist', 'fog-cloud', 'water-breathing', 'control-water', 'ice-storm', 'cone-of-cold', 'elemental-body-iv', 'horrid-wilting', 'elemental-swarm'], abilities: ['icicle'], resistances: (c) => (c.prog('domainLevel') >= 20 ? { cold: Infinity } : c.prog('domainLevel') >= 12 ? { cold: 20 } : c.prog('domainLevel') >= 6 ? { cold: 10 } : {}) }),
 };
 
 const ARCANE_SCHOOLS = {
   universalist: o('Universalist', 'No opposition schools. Hand of the Apprentice (throw bonded weapon); Metamagic Mastery (8th).', { opposition: 0 }),
-  abjuration: o('Abjuration', 'Resistance (energy resistance 5, 10 at 11th, immunity at 20th); Protective Ward (+1 deflection aura).', { resistances: (c) => ({ [c.choices.abjurationEnergy || 'fire']: c.classLevel('wizard') >= 20 ? Infinity : c.classLevel('wizard') >= 11 ? 10 : 5 }) }),
+  abjuration: o('Abjuration', 'Resistance (energy resistance 5, 10 at 11th, immunity at 20th); Protective Ward (+1 deflection aura).', { resistances: (c) => ({ [c.choices.abjurationEnergy || 'fire']: c.prog('wizardSchoolLevel') >= 20 ? Infinity : c.prog('wizardSchoolLevel') >= 11 ? 10 : 5 }) }),
   conjuration: o('Conjuration', "Summoner's Charm (summon duration +1/2 level rounds); Acid Dart (1d6 + 1 per two levels acid, ranged touch).", { abilities: ['acid-dart'] }),
-  divination: o('Divination', 'Forewarned: +1/2 wizard level (min 1) initiative and always act in the surprise round; Diviner\'s Fortune.', { modifiers: (c) => [mod('initiative', Math.max(1, Math.floor(c.classLevel('wizard') / 2)), 'untyped', 'Forewarned')] }),
+  divination: o('Divination', 'Forewarned: +1/2 wizard level (min 1) initiative and always act in the surprise round; Diviner\'s Fortune.', { modifiers: (c) => [mod('initiative', Math.max(1, Math.floor(c.prog('wizardSchoolLevel') / 2)), 'untyped', 'Forewarned')] }),
   enchantment: o('Enchantment', 'Enchanting Smile (+2 enhancement to Bluff, Diplomacy, Intimidate, +1 per five levels); Dazing Touch.', {
-    modifiers: (c) => ['bluff', 'diplomacy', 'intimidate'].map((s) => mod(`skill.${s}`, 2 + Math.floor(c.classLevel('wizard') / 5), 'enhancement', 'Enchanting smile')),
+    modifiers: (c) => ['bluff', 'diplomacy', 'intimidate'].map((s) => mod(`skill.${s}`, 2 + Math.floor(c.prog('wizardSchoolLevel') / 5), 'enhancement', 'Enchanting smile')),
     abilities: ['dazing-touch'],
   }),
   evocation: o('Evocation', 'Intense Spells (+1/2 wizard level damage, min 1, to evocation damage spells); Force Missile (1d4 + intense, 3 + Int/day).', { flags: () => ['intenseSpells'], abilities: ['force-missile'] }),
   illusion: o('Illusion', 'Extended Illusions (+1/2 level rounds); Blinding Ray (ranged touch: blind 1 round).', { abilities: ['blinding-ray'] }),
   necromancy: o('Necromancy', 'Power over Undead (Command Undead or Turn Undead bonus feat); Grave Touch (shaken).', { grantsFeats: ['command-undead'], abilities: ['grave-touch'] }),
   transmutation: o('Transmutation', 'Physical Enhancement (+1 enhancement to one physical ability, +1 per five levels); Telekinetic Fist (1d4 + 1 per two levels bludgeoning, ranged touch).', {
-    modifiers: (c) => [mod(c.choices.transmutationAbility || 'str', 1 + Math.floor(c.classLevel('wizard') / 5), 'enhancement', 'Physical enhancement')],
+    modifiers: (c) => [mod(c.choices.transmutationAbility || 'str', 1 + Math.floor(c.prog('wizardSchoolLevel') / 5), 'enhancement', 'Physical enhancement')],
     abilities: ['telekinetic-fist'],
   }),
 };
@@ -295,4 +295,19 @@ const DEITIES = {
   'the-shining-shield': { name: 'The Shining Shield', alignment: 'LG', domains: ['law', 'good', 'protection', 'glory', 'healing'], favoredWeapon: 'longsword' },
 };
 
-module.exports = { RAGE_POWERS, ROGUE_TALENTS, DOMAINS, ARCANE_SCHOOLS, BLOODLINES, MAGUS_ARCANA, MERCIES, COMBAT_STYLES, WEAPON_GROUPS, TERRAINS, FAVORED_ENEMY_TYPES, DRAGON_TYPES, DEITIES };
+/**
+ * Option groups a character picks from. `single` groups store one id in
+ * choices[key]; the others store a list. `levelProg` names the progression
+ * used for minLevel checks (so e.g. skald rage powers count skald levels).
+ * Class features declare `choice: '<group>'` to grant one pick when gained.
+ */
+const OPTION_GROUPS = {
+  'rage-power': { table: RAGE_POWERS, label: 'rage power', levelProg: 'ragePowerLevel' },
+  'rogue-talent': { table: ROGUE_TALENTS, label: 'rogue talent', levelProg: 'rogueTalentLevel', advancedAt: 10 },
+  domains: { table: DOMAINS, label: 'domain' },
+  'magus-arcana': { table: MAGUS_ARCANA, label: 'magus arcana', levelProg: 'magusLevel' },
+  mercy: { table: MERCIES, label: 'mercy', levelProg: 'paladinLevel' },
+  school: { table: ARCANE_SCHOOLS, label: 'arcane school', single: true },
+};
+
+module.exports = { RAGE_POWERS, ROGUE_TALENTS, DOMAINS, ARCANE_SCHOOLS, BLOODLINES, MAGUS_ARCANA, MERCIES, COMBAT_STYLES, WEAPON_GROUPS, TERRAINS, FAVORED_ENEMY_TYPES, DRAGON_TYPES, DEITIES, OPTION_GROUPS };

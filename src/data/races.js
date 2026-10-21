@@ -86,7 +86,7 @@ const RACES = {
     traits: ['Fearless: +2 vs fear.', 'Halfling Luck: +1 on all saving throws.', 'Keen Senses: +2 Perception.', 'Sure-Footed: +2 Acrobatics and Climb.', 'Weapon Familiarity: slings; halfling weapons are martial.'],
     modifiers: (s = 'Halfling') => [
       mod('save', 2, 'racial', `${s} fearless`, ['fear']),
-      mod('save', 1, 'luck', `${s} luck`),
+      mod('save', 1, 'racial', `${s} luck`),
       mod('skill.perception', 2, 'racial', `${s} keen senses`),
       mod('skill.acrobatics', 2, 'racial', `${s} sure-footed`),
       mod('skill.climb', 2, 'racial', `${s} sure-footed`),

@@ -490,8 +490,6 @@ class Encounter {
     }
     if (attacker.hasFlag('weaponMastery')) ctx.weaponMastery = true;
     if (attacker.hasFlag('arcaneStrikeActive')) ctx.arcaneStrike = true;
-    const ign = attacker.flagValue('ignoreFireResist');
-    if (ign) ctx.ignoreFireResist = ign;
     return { ...ctx, ...opts };
   }
 

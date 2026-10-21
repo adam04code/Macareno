@@ -123,15 +123,7 @@ function dealSpellDamage(ctx, target, amount, energy, saveRes, eff) {
   } else {
     packets.push({ amount: amt, type: energy || 'untyped', nonlethal: eff.nonlethal });
   }
-  const darkfire = ctx.caster.hasFlag && ctx.caster.hasFlag('darkfire') && energy === 'fire' && ctx.options.darkfire;
-  if (darkfire) {
-    const half = Math.floor(packets[0].amount / 2);
-    packets[0].amount -= half;
-    packets.push({ amount: half, type: target.isUndead() ? 'untyped' : 'negative' });
-  }
-  const ignore = ctx.caster.flagValue ? ctx.caster.flagValue('ignoreFireResist') : 0;
-  const res = applyDamage(target, packets, { ignoreResist: ignore || 0, minHp: eff.minHp, positiveHurtsLiving: false });
-  if (darkfire && ctx.caster.hasFlag('devouringDarkfire') && saveRes && !saveRes.success) target.addCondition('sickened', 1, { id: ctx.caster.id, name: 'Devouring darkfire' });
+  const res = applyDamage(target, packets, { minHp: eff.minHp, positiveHurtsLiving: false });
   return { damage: res.total, details: res.details, state: res.state, note };
 }
 

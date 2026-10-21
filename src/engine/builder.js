@@ -3,7 +3,8 @@
 const { Character } = require('./character');
 const T = require('./tables');
 const { RACES } = require('../data/races');
-const { CLASSES, BASE_CLASSES } = require('../data/classes');
+const { CLASSES, BASE_CLASSES, archetypeConflicts } = require('../data/classes');
+const { FEATURES } = require('../data/features');
 const { FEATS, MONK_BONUS_FEATS, featList } = require('../data/feats');
 const { SKILLS, ALIGNMENTS, ABILITIES, alignmentStepDistance, LANGUAGES, SPELL_SCHOOLS } = require('../data/core');
 const OPTIONS = require('../data/classOptions');
@@ -77,19 +78,37 @@ function featSlotsAt(char, classId, classLevel, charLevel) {
   const slots = [];
   if (charLevel % 2 === 1) slots.push({ kind: 'general' });
   if (charLevel === 1 && char.raceDef().bonusFeats) for (let i = 0; i < char.raceDef().bonusFeats; i++) slots.push({ kind: 'general', source: 'race' });
-  const bf = CLASSES[classId].bonusFeats;
-  if (bf && bf.levels.includes(classLevel)) slots.push({ kind: bf.list, source: classId });
+  const bf = char.classDef(classId).bonusFeats;
+  if (bf && bf.levels.includes(classLevel)) slots.push({ kind: bf.list, source: classId, ...(bf.feats ? { feats: bf.feats } : {}) });
   return slots;
+}
+
+/** Feat slots granted by options picked this level (Combat Trick, Feat talent, bonus-feat discoveries...). */
+function optionFeatSlots(choices) {
+  const out = [];
+  for (const [key, group] of Object.entries(OPTIONS.OPTION_GROUPS)) {
+    for (const id of asList(choices[key])) {
+      const opt = group.table[id];
+      if (opt && opt.bonusFeat) out.push({ kind: opt.bonusFeat === 'any' ? 'general' : opt.bonusFeat, source: key, ...(opt.bonusFeats ? { feats: opt.bonusFeats } : {}) });
+    }
+  }
+  return out;
 }
 
 function allowedForSlot(featId, slot, char, classLevel) {
   const f = FEATS[featId];
   if (!f) return false;
   if (f.types.includes('monster')) return false;
+  if (slot.feats) return slot.feats.includes(featId);
   if (slot.kind === 'general') return true;
+  if (slot.kind === 'teamwork' || slot.kind === 'critical' || slot.kind === 'metamagic' || slot.kind === 'item-creation' || slot.kind === 'style') return f.types.includes(slot.kind);
   if (slot.kind === 'combat') return f.types.includes('combat');
   if (slot.kind === 'wizard') return f.types.includes('metamagic') || f.types.includes('item-creation') || featId === 'spell-mastery';
   if (slot.kind === 'magus') return f.types.some((t) => ['combat', 'metamagic', 'item-creation'].includes(t));
+  if (slot.kind === 'bloodline') {
+    const bl = OPTIONS.BLOODLINES[char.choices.bloodline] || OPTIONS.BLOODLINES.draconic;
+    return (bl.feats || []).includes(featId);
+  }
   if (slot.kind === 'monk') {
     const allowed = Object.entries(MONK_BONUS_FEATS).filter(([lvl]) => classLevel >= Number(lvl)).flatMap(([, ids]) => ids);
     return allowed.includes(featId);
@@ -118,7 +137,7 @@ function applyFeats(char, picks, slots, classLevel) {
       errors.push(`No feat slot available for ${def.name}`);
       continue;
     }
-    const ignorePrereqs = slot.kind === 'monk';
+    const ignorePrereqs = slot.kind === 'monk' || slot.ignorePrereqs;
     const pre = prerequisites.featPrereqs(char, pick.id, pick.param);
     const fatal = pre.failures.filter((f) => !ignorePrereqs || f.startsWith('Already') || f.startsWith('Requires a choice'));
     if (fatal.length) {
@@ -183,48 +202,72 @@ function applySkills(char, ranks, budget) {
   return { errors, spent };
 }
 
+const asList = (v) => (v === undefined || v === null || v === '' ? [] : Array.isArray(v) ? v : [v]);
+
+/** Option ids a character could legally pick from `group` right now (used by validation and auto-leveling). */
+function optionAllowed(char, groupKey, id, classLevel, classId) {
+  const group = OPTIONS.OPTION_GROUPS[groupKey];
+  const opt = group && group.table[id];
+  if (!opt) return `Unknown ${group ? group.label : groupKey}: ${id}`;
+  const lvl = group.levelProg ? Math.max(char.prog(group.levelProg), classLevel) : classLevel;
+  if (opt.minLevel && lvl < opt.minLevel) return `${opt.name} requires level ${opt.minLevel}`;
+  if (opt.advanced && group.advancedAt && lvl < group.advancedAt) return `${opt.name} is an advanced option (level ${group.advancedAt})`;
+  if (opt.classes && classId && !opt.classes.includes(classId)) return `${opt.name} is not available to ${CLASSES[classId].name}s`;
+  if (!opt.repeatable && char.hasOption(groupKey, id)) return `Already have ${opt.name}`;
+  for (const r of opt.requires || []) if (!char.hasOption(groupKey, r)) return `${opt.name} requires ${group.table[r] ? group.table[r].name : r}`;
+  if (opt.prereq) {
+    const res = prerequisites.check(char, opt.prereq);
+    if (!res.ok) return `${opt.name}: ${res.failures.join('; ')}`;
+  }
+  if (opt.validate) {
+    const msg = opt.validate(char, classLevel);
+    if (msg) return msg;
+  }
+  return null;
+}
+
+/** Number of picks from each option group granted by this level's features and extra-pick feats. */
+function picksNeeded(char, classId, classLevel, featPicks = []) {
+  const need = {};
+  for (const key of char.classDef(classId).features[classLevel] || []) {
+    const f = FEATURES[key];
+    if (f && f.choice) need[f.choice] = (need[f.choice] || 0) + (f.choiceCount || 1);
+  }
+  for (const p of featPicks) {
+    const def = FEATS[typeof p === 'string' ? p : p.id];
+    if (def && def.grantsChoice) need[def.grantsChoice] = (need[def.grantsChoice] || 0) + 1;
+  }
+  return need;
+}
+
 /** Class-feature choices gained at this class level. */
-function applyClassChoices(char, classId, classLevel, choices = {}) {
+function applyClassChoices(char, classId, classLevel, choices = {}, featPicks = []) {
   const errors = [];
-  const def = CLASSES[classId];
+  const def = char.classDef(classId);
   const gained = def.features[classLevel] || [];
-  const pickOne = (key, table, label, extra = () => true) => {
-    const v = choices[key];
-    if (!v) {
-      errors.push(`Choose a ${label} (choices.${key})`);
-      return;
+  // Generic option groups (rage powers, talents, hexes, discoveries, revelations...).
+  for (const [groupKey, n] of Object.entries(picksNeeded(char, classId, classLevel, featPicks))) {
+    const group = OPTIONS.OPTION_GROUPS[groupKey];
+    const picks = asList(choices[groupKey]);
+    if (picks.length !== n) {
+      errors.push(`Choose ${n} ${group.label}${n > 1 ? 's' : ''} (choices.${groupKey}${n > 1 ? ' as a list' : ''})`);
+      continue;
     }
-    const opt = table[v];
-    if (!opt) {
-      errors.push(`Unknown ${label}: ${v}`);
-      return;
+    for (const id of picks) {
+      const why = optionAllowed(char, groupKey, id, classLevel, classId);
+      if (why) {
+        errors.push(why);
+        continue;
+      }
+      if (group.single) char.choices[groupKey] = id;
+      else char.choices[groupKey] = [...asList(char.choices[groupKey]), id];
+      const opt = group.table[id];
+      if (opt.onPick) errors.push(...(opt.onPick(char, choices) || []));
+      char.touch();
     }
-    if (opt.minLevel && classLevel < opt.minLevel) errors.push(`${opt.name} requires level ${opt.minLevel}`);
-    if ((char.choices[key] || []).includes(v)) errors.push(`Already have ${opt.name}`);
-    for (const r of opt.requires || []) if (!(char.choices[key] || []).includes(r)) errors.push(`${opt.name} requires ${table[r] ? table[r].name : r}`);
-    if (!extra(opt)) return;
-    char.choices[key] = [...(char.choices[key] || []), v];
-  };
+  }
   for (const feature of gained) {
     switch (feature) {
-      case 'rage-power':
-        pickOne('rage-power', OPTIONS.RAGE_POWERS, 'rage power');
-        break;
-      case 'rogue-talent':
-        pickOne('rogue-talent', OPTIONS.ROGUE_TALENTS, 'rogue talent', (opt) => {
-          if (opt.advanced && classLevel < 10) {
-            errors.push(`${opt.name} is an advanced talent (10th level)`);
-            return false;
-          }
-          return true;
-        });
-        break;
-      case 'magus-arcana':
-        pickOne('magus-arcana', OPTIONS.MAGUS_ARCANA, 'magus arcana');
-        break;
-      case 'mercy':
-        pickOne('mercy', OPTIONS.MERCIES, 'mercy');
-        break;
       case 'weapon-training': {
         const g = choices['weapon-training'];
         if (!OPTIONS.WEAPON_GROUPS.includes(g)) errors.push(`Choose a weapon group for weapon training (one of ${OPTIONS.WEAPON_GROUPS.join(', ')})`);
@@ -263,10 +306,10 @@ function applyClassChoices(char, classId, classLevel, choices = {}) {
         break;
       }
       case 'combat-style': {
-        if (classLevel === 2) {
-          const st = choices['combat-style'] || char.choices['combat-style-name'];
+        if (!char.choices['combat-style-name']) {
+          const st = choices['combat-style'];
           if (!OPTIONS.COMBAT_STYLES[st]) {
-            errors.push('Choose a combat style (archery or two-weapon)');
+            errors.push(`Choose a combat style (${Object.keys(OPTIONS.COMBAT_STYLES).join(', ')})`);
             break;
           }
           char.choices['combat-style-name'] = st;
@@ -290,8 +333,7 @@ function applyClassChoices(char, classId, classLevel, choices = {}) {
             if (!OPTIONS.DOMAINS[x]) errors.push(`Unknown domain ${x}`);
             else if (deity && !deity.domains.includes(x)) errors.push(`${deity.name} does not grant the ${x} domain`);
           }
-          const ax = char.axes();
-          for (const x of d) if ((x === 'good' && !ax.good) || (x === 'evil' && !ax.evil) || (x === 'law' && !ax.lawful) || (x === 'chaos' && !ax.chaotic)) errors.push(`The ${x} domain requires a matching alignment`);
+          errors.push(...alignmentDomainErrors(char, d));
           char.choices.domains = d;
         }
         break;
@@ -330,11 +372,41 @@ function applyClassChoices(char, classId, classLevel, choices = {}) {
       case 'arcane-bond':
         char.choices.arcaneBond = choices.arcaneBond === 'familiar' ? 'familiar' : 'object';
         break;
-      default:
+      default: {
+        const f = FEATURES[feature];
+        if (f && f.onGain) errors.push(...(f.onGain(char, choices, classLevel) || []));
         break;
+      }
     }
   }
-  // Extra rogue talent / rage power / arcana feats grant picks too.
+  return errors;
+}
+
+/** The good/evil/law/chaos domains (and blessings, inquisitions) require a matching alignment. */
+function alignmentDomainErrors(char, ids) {
+  const ax = char.axes();
+  const out = [];
+  for (const x of ids) if ((x === 'good' && !ax.good) || (x === 'evil' && !ax.evil) || (x === 'law' && !ax.lawful) || (x === 'chaos' && !ax.chaotic)) out.push(`The ${x} domain requires a matching alignment`);
+  return out;
+}
+
+/** Validate and record archetypes when a class is first taken. */
+function applyArchetypes(char, classId, ids) {
+  const list = asList(ids);
+  if (!list.length) return [];
+  const errors = archetypeConflicts(classId, list);
+  const def = CLASSES[classId];
+  for (const id of list) {
+    const a = def.archetypes && def.archetypes[id];
+    if (!a) continue;
+    if (a.alignment && !a.alignment(char.alignment)) errors.push(`${a.name}: alignment must be ${a.alignmentText}`);
+    if (a.race && !asList(a.race).includes(char.race)) errors.push(`${a.name} is restricted to ${asList(a.race).join('/')}`);
+  }
+  const entry = char.classes.find((c) => c.id === classId);
+  if (!errors.length) {
+    entry.archetypes = list;
+    char.touch();
+  }
   return errors;
 }
 
@@ -403,6 +475,7 @@ function createCharacter(spec, opts = {}) {
   });
   const cdef = CLASSES[classId];
   if (cdef.alignment && !cdef.alignment(char.alignment)) errors.push(`${cdef.name}s must be ${cdef.alignmentText}`);
+  if (cdef.requiresDeity && !OPTIONS.DEITIES[spec.deity]) errors.push(`${cdef.name}s must choose a deity (${Object.keys(OPTIONS.DEITIES).join(', ')})`);
   // Favored class(es).
   const favored = spec.favoredClasses || [spec.favoredClass || classId];
   if (favored.length > (race.favoredClasses || 1)) errors.push(`${race.name}s may have ${race.favoredClasses || 1} favored class(es)`);
@@ -413,7 +486,8 @@ function createCharacter(spec, opts = {}) {
   const favoredBonus = favored.includes(classId) ? (spec.favoredBonus === 'skill' ? 'skill' : 'hp') : null;
   char.levelHistory.push({ level: 1, classId, hp: cdef.hitDie, favoredBonus });
   char.touch();
-  errors.push(...applyClassChoices(char, classId, 1, spec.choices || {}));
+  errors.push(...applyArchetypes(char, classId, spec.archetypes));
+  errors.push(...applyClassChoices(char, classId, 1, spec.choices || {}, spec.feats || []));
   // Languages: racial + Int bonus.
   const bonusCount = Math.max(0, char.baseAbilityMod('int'));
   const extraLangs = (spec.languages || []).filter((l) => !race.languages.includes(l));
@@ -503,6 +577,7 @@ function levelUp(char, spec, opts = {}) {
       }
     }
     clone.classes.push(entry);
+    errors.push(...applyArchetypes(clone, classId, spec.archetypes));
   }
   const classLevel = clone.classLevel(classId);
   const charLevel = clone.hitDice();
@@ -518,11 +593,10 @@ function levelUp(char, spec, opts = {}) {
     else clone.abilityIncreases.push(spec.abilityIncrease);
   }
   clone.touch();
-  errors.push(...applyClassChoices(clone, classId, classLevel, spec.choices || {}));
-  // Feats.
+  errors.push(...applyClassChoices(clone, classId, classLevel, spec.choices || {}, spec.feats || []));
+  // Feats (options such as Combat Trick or a Feat talent add a slot).
   const slots = featSlotsAt(clone, classId, classLevel, charLevel);
-  const extraFromTalent = (spec.choices && spec.choices['rogue-talent'] && OPTIONS.ROGUE_TALENTS[spec.choices['rogue-talent']] && OPTIONS.ROGUE_TALENTS[spec.choices['rogue-talent']].bonusFeat) || null;
-  if (extraFromTalent) slots.push({ kind: extraFromTalent === 'any' ? 'general' : extraFromTalent, source: 'rogue-talent' });
+  slots.push(...optionFeatSlots(spec.choices || {}));
   errors.push(...applyFeats(clone, spec.feats, slots, classLevel));
   // Skills.
   const budget = clone.skillPointsPerLevel(classId) + (favoredBonus === 'skill' ? 1 : 0);
@@ -572,7 +646,7 @@ function levelUp(char, spec, opts = {}) {
   }
   char.touch();
   char.hp.current = char.maxHp() - damageTaken;
-  return { level: char.hitDice(), class: classId, classLevel, hpGained: hp + (favoredBonus === 'hp' ? 1 : 0), featuresGained: cdef.features[classLevel] || [] };
+  return { level: char.hitDice(), class: classId, classLevel, hpGained: hp + (favoredBonus === 'hp' ? 1 : 0), featuresGained: char.classDef(classId).features[classLevel] || [] };
 }
 
 /** What a level up in `classId` would require the player to choose. */
@@ -585,7 +659,7 @@ function levelUpPreview(char, classId) {
   const slots = featSlotsAt(char, classId, classLevel, charLevel);
   return {
     class: classId, eligible: req.ok, failures: req.failures, newClassLevel: classLevel, newCharacterLevel: charLevel,
-    features: (cdef.features[classLevel] || []).map((k) => ({ key: k, ...(require('../data/features').FEATURES[k] ? { name: require('../data/features').FEATURES[k].name, description: require('../data/features').FEATURES[k].description } : {}) })),
+    features: (char.classDef(classId).features[classLevel] || []).map((k) => ({ key: k, ...(require('../data/features').FEATURES[k] ? { name: require('../data/features').FEATURES[k].name, description: require('../data/features').FEATURES[k].description } : {}) })),
     featSlots: slots, abilityIncrease: charLevel % 4 === 0, skillRanks: char.skillPointsPerLevel(classId),
     hitDie: cdef.hitDie, averageHp: Math.ceil(averageHp(cdef.hitDie)), favoredClass: char.favoredClasses.includes(classId),
     needsSpellProgression: !!cdef.advancesCasting && !char.classLevel(classId),
@@ -609,13 +683,25 @@ function autoLevelSpec(char, classId, prefs = {}) {
   if (preview.needsSpellProgression) spec.spellProgression = prefs.spellProgression;
   // Class choices: first legal option for each feature gained.
   const clone = () => new Character(JSON.parse(JSON.stringify(char.toJSON())));
-  const optionPick = (table, key, lvl) => Object.entries(table).find(([id, o]) => !(char.choices[key] || []).includes(id) && (!o.minLevel || lvl >= o.minLevel) && (o.requires || []).every((r) => (char.choices[key] || []).includes(r)) && !o.advanced && !o.bonusFeat);
+  // Generic option groups: first legal options in table order.
+  const probeLevel = clone();
+  const pe = probeLevel.classes.find((x) => x.id === classId);
+  if (pe) pe.level += 1;
+  else probeLevel.classes.push({ id: classId, level: 1, archetypes: asList(prefs.archetypes) });
+  probeLevel.touch();
+  if (!pe && prefs.archetypes) spec.archetypes = asList(prefs.archetypes);
+  for (const [groupKey, n] of Object.entries(picksNeeded(probeLevel, classId, preview.newClassLevel))) {
+    if (spec.choices[groupKey]) continue;
+    const picks = [];
+    for (const [id, o] of Object.entries(OPTIONS.OPTION_GROUPS[groupKey].table)) {
+      if (picks.length >= n) break;
+      if (o.bonusFeat || o.autoSkip) continue;
+      if (!optionAllowed(char, groupKey, id, preview.newClassLevel, classId)) picks.push(id);
+    }
+    spec.choices[groupKey] = n === 1 ? picks[0] : picks;
+  }
   for (const f of preview.features) {
     const lvl = preview.newClassLevel;
-    if (f.key === 'rage-power' && !spec.choices['rage-power']) spec.choices['rage-power'] = optionPick(OPTIONS.RAGE_POWERS, 'rage-power', lvl)[0];
-    if (f.key === 'rogue-talent' && !spec.choices['rogue-talent']) spec.choices['rogue-talent'] = optionPick(OPTIONS.ROGUE_TALENTS, 'rogue-talent', lvl)[0];
-    if (f.key === 'magus-arcana' && !spec.choices['magus-arcana']) spec.choices['magus-arcana'] = optionPick(OPTIONS.MAGUS_ARCANA, 'magus-arcana', lvl)[0];
-    if (f.key === 'mercy' && !spec.choices.mercy) spec.choices.mercy = optionPick(OPTIONS.MERCIES, 'mercy', lvl)[0];
     if (f.key === 'weapon-training' && !spec.choices['weapon-training']) spec.choices['weapon-training'] = OPTIONS.WEAPON_GROUPS.find((g) => !(char.choices['weapon-training'] || []).includes(g));
     if (f.key === 'favored-enemy' && !spec.choices['favored-enemy']) spec.choices['favored-enemy'] = OPTIONS.FAVORED_ENEMY_TYPES.find((t) => !(char.choices['favored-enemy'] || []).some((x) => x.type === t));
     if (f.key === 'favored-terrain' && !spec.choices['favored-terrain']) spec.choices['favored-terrain'] = OPTIONS.TERRAINS.find((t) => !(char.choices['favored-terrain'] || []).some((x) => x.terrain === t));
@@ -633,7 +719,7 @@ function autoLevelSpec(char, classId, prefs = {}) {
     const candidates = [...(prefs.feats || []), ...Object.keys(FEATS)];
     const pick = candidates.find((id) => {
       const f = FEATS[id];
-      if (!f || f.param || spec.feats.some((x) => x.id === id)) return false;
+      if (!f || f.param || f.grantsChoice || spec.feats.some((x) => x.id === id)) return false;
       if (!allowedForSlot(id, slot, probe, preview.newClassLevel)) return false;
       return prerequisites.featPrereqs(probe, id).ok || (slot.kind === 'monk' && !probe.hasFeat(id));
     });
@@ -687,4 +773,4 @@ function autoLevelSpec(char, classId, prefs = {}) {
   return spec;
 }
 
-module.exports = { createCharacter, levelUp, autoLevelSpec, levelUpPreview, eligibleClasses, rollAbilityArray, pointBuyCost, featSlotsAt, CLASS_KITS };
+module.exports = { createCharacter, levelUp, autoLevelSpec, levelUpPreview, eligibleClasses, rollAbilityArray, pointBuyCost, featSlotsAt, optionAllowed, picksNeeded, CLASS_KITS };

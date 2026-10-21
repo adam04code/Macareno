@@ -142,12 +142,6 @@ test('every prestige class can be reached and advanced to 10th level', () => {
   levelTo(mt, 'mystic-theurge', 10, { spellProgression: { arcane: 'wizard', divine: 'cleric' } });
   assert.equal(mt.casterLevel('cleric'), 13);
   assert.equal(mt.casterLevel('wizard'), 13);
-
-  const df = make({ name: 'Dark', class: 'wizard', scores: ARRAYS.int, racialBonus: 'int', feats: [{ id: 'spell-focus', param: 'evocation' }, { id: 'toughness' }], skills: { 'knowledge-arcana': 1, 'knowledge-planes': 1 }, choices: { school: 'evocation', opposition: ['enchantment', 'illusion'] }, spells: { spellbook: ['burning-hands', 'magic-missile', 'shield', 'mage-armor'] } });
-  levelTo(df, 'wizard', 4, { skills: ['knowledge-arcana', 'knowledge-planes'] });
-  levelTo(df, 'darkfire-adept', 10, { spellProgression: 'wizard' });
-  assert.equal(df.casterLevel('wizard'), 15);
-  assert.ok(df.immunities().has('fire'));
 });
 
 test('all base classes level to 20', () => {

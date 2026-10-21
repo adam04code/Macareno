@@ -45,7 +45,7 @@ const FEATURES = {
   rage: f('Rage', 'Free action: +4 morale Str and Con, +2 morale on Will saves, -2 AC for 4 + Con mod rounds/day (+2 per level after 1st). Cannot use concentration or Int/Dex/Cha skills (except Acrobatics, Fly, Intimidate, Ride). Fatigued afterwards.', {
     abilities: ['rage'], resources: (c) => ({ rage: { max: c.prog('rageRounds') + Math.max(0, c.baseAbilityMod('con')) + (c.hasFeat('extra-rage') ? 6 * c.featCount('extra-rage') : 0), per: 'day', unit: 'rounds' } }),
   }),
-  'rage-power': f('Rage Power', 'Gain a rage power (see rage power list).'),
+  'rage-power': f('Rage Power', 'Gain a rage power (see rage power list).', { choice: 'rage-power' }),
   'greater-rage': f('Greater Rage', 'Rage bonuses increase to +6 Str/Con and +3 Will.'),
   'indomitable-will': f('Indomitable Will', '+4 on Will saves vs enchantment spells while raging.', { modifiers: (c) => (c.hasFlag('raging') ? [mod('save.will', 4, 'untyped', 'Indomitable will', ['enchantment'])] : []) }),
   'tireless-rage': f('Tireless Rage', 'No longer fatigued after raging.'),
@@ -121,10 +121,10 @@ const FEATURES = {
   }),
   'maneuver-training': f('Maneuver Training', 'Uses monk level instead of BAB when calculating CMB.', { flags: () => ['maneuverTraining'] }),
   'still-mind': f('Still Mind', '+2 on saves vs enchantment.', { modifiers: () => [mod('save', 2, 'untyped', 'Still mind', ['enchantment'])] }),
-  'ki-pool': f('Ki Pool', 'Pool of ki points (1/2 monk level + Wis). Spend 1 for an extra flurry attack at highest BAB, +4 dodge AC for 1 round, or +20 ft. speed. Unarmed strikes count as magic (and lawful at 10th, adamantine at 16th).', {
+  'ki-pool': f('Ki Pool', 'Pool of ki points (1/2 monk level + Wis). Spend 1 for an extra flurry attack at highest BAB, +4 dodge AC for 1 round, or +20 ft. speed. Unarmed strikes count as magic (cold iron and silver at 7th, lawful at 10th, adamantine at 16th).', {
     abilities: ['ki-extra-attack', 'ki-dodge', 'ki-speed'],
     resources: (c) => ({ ki: { max: c.prog('kiPool') + Math.max(0, c.baseAbilityMod('wis')) + (c.hasFeat('extra-ki') ? 2 * c.featCount('extra-ki') : 0), per: 'day' } }),
-    flags: (c) => ['unarmedMagic', ...(c.prog('monkLevel') >= 10 ? ['unarmedLawful'] : []), ...(c.prog('monkLevel') >= 16 ? ['unarmedAdamantine'] : [])],
+    flags: (c) => ['unarmedMagic', ...(c.prog('monkLevel') >= 7 ? ['unarmedColdIron', 'unarmedSilver'] : []), ...(c.prog('monkLevel') >= 10 ? ['unarmedLawful'] : []), ...(c.prog('monkLevel') >= 16 ? ['unarmedAdamantine'] : [])],
   }),
   'slow-fall': f('Slow Fall', 'Treat a fall as shorter (20 ft. at 4th, +10 ft. per two levels) when within arm\'s reach of a wall.'),
   'high-jump': f('High Jump', 'Adds monk level to Acrobatics checks to jump; spend 1 ki for +20.', { modifiers: (c) => [mod('skill.acrobatics', c.prog('monkLevel'), 'untyped', 'High jump', ['jump'])] }),
@@ -152,7 +152,7 @@ const FEATURES = {
   }),
   'aura-of-courage': f('Aura of Courage', 'Immune to fear; allies within 10 ft. gain +4 morale vs fear.', { immunities: ['fear'], aura: { radius: 10, modifiers: () => [mod('save', 4, 'morale', 'Aura of courage', ['fear'])] } }),
   'divine-health': f('Divine Health', 'Immune to all diseases.', { immunities: ['disease'] }),
-  mercy: f('Mercy', 'Lay on hands also removes a chosen condition.'),
+  mercy: f('Mercy', 'Lay on hands also removes a chosen condition.', { choice: 'mercy' }),
   'channel-positive-energy': f('Channel Positive Energy', 'Spend two uses of lay on hands to channel positive energy as a cleric of the paladin\'s level.', { abilities: ['channel-energy-paladin'] }),
   'divine-bond': f('Divine Bond', 'Bond with a weapon (+1 enhancement per 3 levels after 5th as a standard action, 1 minute/level) or a celestial mount.', { abilities: ['divine-bond-weapon'], resources: (c) => ({ divineBond: { max: 1 + Math.floor((c.prog('paladinLevel') - 5) / 4), per: 'day' } }) }),
   'aura-of-resolve': f('Aura of Resolve', 'Immune to charm; allies within 10 ft. gain +4 morale vs charm.', { immunities: ['charm'], aura: { radius: 10, modifiers: () => [mod('save', 4, 'morale', 'Aura of resolve', ['charm'])] } }),
@@ -194,7 +194,7 @@ const FEATURES = {
     modifiers: (c) => [mod('skill.perception', c.prog('trapfinding'), 'untyped', 'Trapfinding', ['trap']), mod('skill.disable-device', c.prog('trapfinding'), 'untyped', 'Trapfinding')],
     flags: () => ['trapfinding'],
   }),
-  'rogue-talent': f('Rogue Talent', 'Gain a rogue talent.'),
+  'rogue-talent': f('Rogue Talent', 'Gain a rogue talent.', { choice: 'rogue-talent' }),
   'advanced-talents': f('Advanced Talents', 'May select advanced talents in place of rogue talents.'),
   'master-strike': f('Master Strike', 'On a sneak attack, target must save (Fort DC 10 + 1/2 level + Int) or be put to sleep, paralyzed or slain (rogue\'s choice).'),
 
@@ -215,7 +215,7 @@ const FEATURES = {
   }),
   'spell-combat': f('Spell Combat', 'Full-round action: make all melee attacks with a one-handed/light weapon at -2 and cast a magus spell with the other hand (casting time standard or less).', { flags: () => ['spellCombat'] }),
   spellstrike: f('Spellstrike', 'Deliver touch spells through a melee weapon attack (critical threat 18-20 ×2 for the spell rider uses weapon\'s range).', { flags: () => ['spellstrike'] }),
-  'magus-arcana': f('Magus Arcana', 'Gain a magus arcana.'),
+  'magus-arcana': f('Magus Arcana', 'Gain a magus arcana.', { choice: 'magus-arcana' }),
   'spell-recall': f('Spell Recall', 'Swift action: spend arcane pool points equal to a spell\'s level to recall a spell already cast.', { abilities: ['spell-recall'] }),
   'magus-bonus-feat': f('Bonus Feat', 'Gain a combat, item creation or metamagic feat.'),
   'knowledge-pool': f('Knowledge Pool', 'Spend arcane pool points to prepare spells not in the spellbook.'),
@@ -234,7 +234,7 @@ const FEATURES = {
   'impromptu-sneak-attack': f('Impromptu Sneak Attack', 'Once per day (twice at 7th), declare one attack a sneak attack: the target is denied its Dex bonus to AC.', {
     abilities: ['impromptu-sneak-attack'], resources: (c) => ({ impromptuSneak: { max: c.prog('impromptuSneakAttack'), per: 'day' } }),
   }),
-  'tricky-spells': f('Tricky Spells', 'Cast spells with Silent Spell or Still Spell without increasing level or casting time, 3/day (5th) or 5/day (9th).', {
+  'tricky-spells': f('Tricky Spells', 'Cast spells with Silent Spell or Still Spell without increasing level or casting time, 3/day (5th), 4/day (7th) or 5/day (9th).', {
     resources: (c) => ({ trickySpells: { max: c.prog('trickySpells'), per: 'day' } }),
   }),
   'invisible-thief': f('Invisible Thief', 'Become invisible (as greater invisibility) for arcane trickster level rounds per day.', { abilities: ['invisible-thief'] }),
@@ -253,7 +253,7 @@ const FEATURES = {
   // --------------------------------------------------------- Dragon Disciple
   'blood-of-dragons': f('Blood of Dragons', 'Dragon disciple levels stack with sorcerer levels for draconic bloodline powers. Non-sorcerers gain draconic bloodline powers at the listed levels.'),
   'dd-natural-armor': f('Natural Armor Increase', 'Natural armor bonus increases by +1 (1st), +2 (4th), +3 (7th).', { modifiers: (c) => [mod('ac', c.prog('ddNaturalArmor'), 'natural-increase', 'Dragon disciple')] }),
-  'dd-bonus-spell': f('Bonus Spells', 'Gain one bonus spell slot of any level the character can cast at 1st, 5th and 9th levels.'),
+  'dd-bloodline-feat': f('Bloodline Feat', 'Gain a bonus feat from the draconic bloodline bonus feat list (2nd, 5th and 8th level).'),
   'dd-ability-boost': f('Ability Boost', 'Str +2 (2nd), Str +2 (4th), Con +2 (6th), Int +2 (8th).', {
     modifiers: (c) => [mod('str', c.prog('ddStr'), 'untyped', 'Dragon disciple'), mod('con', c.prog('ddCon'), 'untyped', 'Dragon disciple'), mod('int', c.prog('ddInt'), 'untyped', 'Dragon disciple')],
   }),
@@ -263,7 +263,7 @@ const FEATURES = {
   'dd-breath-weapon': f('Breath Weapon', 'Gain the draconic breath weapon (1d6 per sorcerer + dragon disciple level, Reflex DC 10 + 1/2 level + Cha half), +1 use if already draconic.', { abilities: ['breath-weapon'] }),
   'dd-blindsense': f('Blindsense', 'Blindsense 30 ft. (5th) increasing to 60 ft. (10th).', { flags: (c) => [`blindsense:${c.prog('ddLevel') >= 10 ? 60 : 30}`] }),
   'dragon-form': f('Dragon Form', 'Cast form of the dragon I once per day (7th); form of the dragon II twice per day (10th).', { abilities: ['dragon-form'], resources: (c) => ({ dragonForm: { max: c.prog('ddLevel') >= 10 ? 2 : 1, per: 'day' } }) }),
-  'dd-wings': f('Wings', 'Grows wings: fly speed 60 ft. (average).', { flags: () => ['fly:60'] }),
+  'dd-wings': f('Wings', 'Gains the draconic wings bloodline power: fly speed 60 ft. (average); 90 ft. once the bloodline itself grants wings (15th).', { flags: (c) => [c.prog('sorcererBloodlineLevel') >= 15 ? 'fly:90' : 'fly:60'] }),
 
   // ------------------------------------------------------------------ Duelist
   'canny-defense': f('Canny Defense', 'Adds Int bonus (max duelist level) as dodge AC when wearing no armor/shield and wielding a light or one-handed piercing weapon.', {
@@ -291,21 +291,6 @@ const FEATURES = {
   'combined-spells': f('Combined Spells', 'Prepare spells from one class list in slots of the other class (up to the listed spell level, slot one level higher).'),
   'spell-synthesis': f('Spell Synthesis', 'Once per day cast one arcane and one divine spell as a full-round action; +2 on caster level checks vs SR, targets -2 on saves.', { abilities: ['spell-synthesis'], resources: () => ({ spellSynthesis: { max: 1, per: 'day' } }) }),
 
-  // ------------------------------------------------------------ Darkfire Adept
-  darkfire: f('Darkfire', 'Fire spells may be cast as darkfire: half the damage is fire, half is negative energy (untyped vs undead immune to negative energy). Darkfire burns even in magical darkness.', { flags: () => ['darkfire'] }),
-  'shadow-sight': f('Shadow Sight', 'Darkvision 60 ft. (1st), 90 ft. (6th); at 9th level sees normally in magical darkness.', {
-    flags: (c) => [`darkvision:${c.prog('darkfireLevel') >= 6 ? 90 : 60}`, ...(c.prog('darkfireLevel') >= 9 ? ['seeInDarkness'] : [])],
-  }),
-  'darkfire-bolt': f('Darkfire Bolt', 'Standard action ranged touch (30 ft.): 1d6 fire + 1d6 negative per two darkfire adept levels (min 1d6 each), uses = 3 + Cha or Int mod per day.', {
-    abilities: ['darkfire-bolt'], resources: (c) => ({ darkfireBolt: { max: 3 + Math.max(0, Math.max(c.baseAbilityMod('int'), c.baseAbilityMod('cha'))), per: 'day' } }),
-  }),
-  'umbral-flames': f('Umbral Flames', 'Fire and darkfire spells ignore 5 points of fire resistance (10 at 7th level); +1 DC for spells with the fire or darkness descriptor.', {
-    modifiers: () => [mod('spellDC.fire', 1, 'untyped', 'Umbral flames'), mod('spellDC.darkness', 1, 'untyped', 'Umbral flames')],
-    flags: (c) => [`ignoreFireResist:${c.prog('darkfireLevel') >= 7 ? 10 : 5}`],
-  }),
-  'cloak-of-cinders': f('Cloak of Cinders', 'Fire resistance 10 and 20% concealment in dim light or darkness.', { resistances: () => ({ fire: 10 }) }),
-  'devouring-darkfire': f('Devouring Darkfire', 'Creatures that fail a save against a darkfire spell are also sickened for 1 round.', { flags: () => ['devouringDarkfire'] }),
-  'darkfire-apotheosis': f('Darkfire Apotheosis', 'Immune to fire; negative-energy portions of darkfire heal the adept as if undead-friendly (cannot be blinded by darkness effects).', { immunities: ['fire'] }),
 };
 
 module.exports = { FEATURES };

@@ -62,7 +62,7 @@ function maxSpellLevelForTradition(char, tradition) {
   return best;
 }
 
-/** Spells per day by level (bonus spells, domain/school slots and dragon disciple bonuses included). */
+/** Spells per day by level (bonus spells and domain/school slots included). */
 function slotsPerDay(char, classId) {
   const d = sc(classId);
   if (!d) return [];
@@ -86,16 +86,6 @@ function slotsPerDay(char, classId) {
     if (l > 0 && d.domainSlots) n += 1;
     if (l > 0 && d.schoolSlots && char.choices.school && char.choices.school !== 'universalist') n += 1;
     out.push(n);
-  }
-  // Dragon disciple bonus spells (1st, 5th, 9th level): one extra slot at the highest castable level.
-  const ddBonus = char.classLevel('dragon-disciple') ? char.prog('ddBonusSpells') : 0;
-  if (ddBonus && d.style === 'spontaneous' && d.tradition === 'arcane') {
-    for (let i = out.length - 1; i > 0; i--) {
-      if (out[i] > 0) {
-        out[i] += ddBonus;
-        break;
-      }
-    }
   }
   return out;
 }

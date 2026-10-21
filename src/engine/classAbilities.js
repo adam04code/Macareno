@@ -22,14 +22,20 @@ function err(message, status = 400) {
 }
 
 const half = (n) => Math.floor(n / 2);
+// Level that domain, school and bloodline powers scale with.
+const domainLvl = (u) => u.prog('domainLevel');
+const schoolLvl = (u) => u.prog('wizardSchoolLevel');
+const bloodLvl = (u) => u.prog('sorcererBloodlineLevel');
+/** "3 + ability modifier times per day" (domain, school and bloodline powers). */
+const usesPerDay = (ability) => (u) => 3 + Math.max(0, u.baseAbilityMod(typeof ability === 'function' ? ability(u) : ability));
 
 function spend(user, resource, cost = 1) {
   if (!user.spendResource(resource, cost)) throw err(`Not enough ${resource} remaining`);
 }
 
-function rangedTouchPower(name, { diceFn, energy, attack = 'rangedTouch', after }) {
+function rangedTouchPower(name, { diceFn, energy, attack = 'rangedTouch', after, ability = 'wis' }) {
   return {
-    name, action: 'standard', target: 'enemy',
+    name, action: 'standard', target: 'enemy', perDay: usesPerDay(ability),
     resource: (u, id) => `power:${id}`,
     use(ctx) {
       const { user, target, rng } = ctx;
@@ -46,9 +52,9 @@ function rangedTouchPower(name, { diceFn, energy, attack = 'rangedTouch', after 
   };
 }
 
-function touchCondition(name, { condition, rounds, save, attack = 'meleeTouch', hdCheck }) {
+function touchCondition(name, { condition, rounds, save, attack = 'meleeTouch', hdCheck, ability = 'wis' }) {
   return {
-    name, action: 'standard', target: 'enemy',
+    name, action: 'standard', target: 'enemy', perDay: usesPerDay(ability),
     resource: (u, id) => `power:${id}`,
     use(ctx) {
       const { user, target, rng } = ctx;
@@ -66,9 +72,9 @@ function touchCondition(name, { condition, rounds, save, attack = 'meleeTouch', 
   };
 }
 
-function touchBuff(name, { modifiers, rounds = 1, flags = [] }) {
+function touchBuff(name, { modifiers, rounds = 1, flags = [], ability = 'wis' }) {
   return {
-    name, action: 'standard', target: 'ally',
+    name, action: 'standard', target: 'ally', perDay: usesPerDay(ability),
     resource: (u, id) => `power:${id}`,
     use(ctx) {
       const { user, target } = ctx;
@@ -459,11 +465,11 @@ const ABILITIES = {
       return { rounds: cl * 10 };
     },
   },
-  'heavenly-fire': rangedTouchPower('Heavenly Fire', { diceFn: (u) => `1d4+${half(u.classLevel('sorcerer'))}`, energy: 'untyped' }),
-  'corrupting-touch': touchCondition('Corrupting Touch', { condition: 'shaken', rounds: (u) => Math.max(1, half(u.classLevel('sorcerer'))) }),
-  'elemental-ray': rangedTouchPower('Elemental Ray', { diceFn: (u) => `1d6+${half(u.classLevel('sorcerer'))}`, energy: 'fire' }),
-  'laughing-touch': touchCondition('Laughing Touch', { condition: 'dazed', rounds: 1 }),
-  'touch-of-destiny': touchBuff('Touch of Destiny', { modifiers: (u, n) => { const b = Math.max(1, half(u.classLevel('sorcerer'))); return [mod('attack', b, 'insight', n), mod('skill', b, 'insight', n), mod('abilityCheck', b, 'insight', n), mod('save', b, 'insight', n)]; } }),
+  'heavenly-fire': rangedTouchPower('Heavenly Fire', { diceFn: (u) => `1d4+${half(bloodLvl(u))}`, energy: 'untyped', ability: 'cha' }),
+  'corrupting-touch': touchCondition('Corrupting Touch', { condition: 'shaken', rounds: (u) => Math.max(1, half(bloodLvl(u))), ability: 'cha' }),
+  'elemental-ray': rangedTouchPower('Elemental Ray', { diceFn: (u) => `1d6+${half(bloodLvl(u))}`, energy: 'fire', ability: 'cha' }),
+  'laughing-touch': touchCondition('Laughing Touch', { condition: 'dazed', rounds: 1, ability: 'cha' }),
+  'touch-of-destiny': touchBuff('Touch of Destiny', { ability: 'cha', modifiers: (u, n) => { const b = Math.max(1, half(bloodLvl(u))); return [mod('attack', b, 'insight', n), mod('skill', b, 'insight', n), mod('abilityCheck', b, 'insight', n), mod('save', b, 'insight', n)]; } }),
   'bonded-object': {
     name: 'Bonded Object', action: 'standard', target: 'none',
     use({ user }) {
@@ -474,64 +480,64 @@ const ABILITIES = {
   },
 
   // ------------------------------------------------------------ Domain & school powers
-  'lightning-arc': rangedTouchPower('Lightning Arc', { diceFn: (u) => `1d6+${half(u.classLevel('cleric'))}`, energy: 'electricity' }),
-  'acid-dart': rangedTouchPower('Acid Dart', { diceFn: (u) => `1d6+${half(Math.max(u.classLevel('cleric'), u.classLevel('wizard')))}`, energy: 'acid' }),
-  'fire-bolt': rangedTouchPower('Fire Bolt', { diceFn: (u) => `1d6+${half(u.classLevel('cleric'))}`, energy: 'fire' }),
-  icicle: rangedTouchPower('Icicle', { diceFn: (u) => `1d6+${half(u.classLevel('cleric'))}`, energy: 'cold' }),
-  'telekinetic-fist': rangedTouchPower('Telekinetic Fist', { diceFn: (u) => `1d4+${half(u.classLevel('wizard'))}`, energy: 'bludgeoning' }),
+  'lightning-arc': rangedTouchPower('Lightning Arc', { diceFn: (u) => `1d6+${half(domainLvl(u))}`, energy: 'electricity' }),
+  'acid-dart': rangedTouchPower('Acid Dart', { diceFn: (u) => `1d6+${half(Math.max(domainLvl(u), schoolLvl(u)))}`, energy: 'acid', ability: (u) => (schoolLvl(u) > domainLvl(u) ? 'int' : 'wis') }),
+  'fire-bolt': rangedTouchPower('Fire Bolt', { diceFn: (u) => `1d6+${half(domainLvl(u))}`, energy: 'fire' }),
+  icicle: rangedTouchPower('Icicle', { diceFn: (u) => `1d6+${half(domainLvl(u))}`, energy: 'cold' }),
+  'telekinetic-fist': rangedTouchPower('Telekinetic Fist', { diceFn: (u) => `1d4+${half(schoolLvl(u))}`, energy: 'bludgeoning', ability: 'int' }),
   'force-missile': {
-    name: 'Force Missile', action: 'standard', target: 'enemy', resource: (u, id) => `power:${id}`,
+    name: 'Force Missile', action: 'standard', target: 'enemy', resource: (u, id) => `power:${id}`, perDay: usesPerDay('int'),
     use({ user, target, rng }) {
-      const intense = Math.max(1, half(user.classLevel('wizard')));
+      const intense = Math.max(1, half(schoolLvl(user)));
       const res = applyDamage(target, [{ amount: dice.total('1d4', rng) + intense, type: 'force' }]);
       return { target: target.id, damage: res.total, state: res.state };
     },
   },
   'blinding-ray': rangedTouchPower('Blinding Ray', {
-    diceFn: () => '0', energy: 'untyped',
+    diceFn: () => '0', energy: 'untyped', ability: 'int',
     after: (ctx, r) => {
-      const blind = ctx.target.hitDice() <= ctx.user.classLevel('wizard');
+      const blind = ctx.target.hitDice() <= schoolLvl(ctx.user);
       ctx.target.addCondition(blind ? 'blinded' : 'dazzled', 1, { name: 'Blinding ray' });
       r.condition = blind ? 'blinded' : 'dazzled';
     },
   }),
-  'dazing-touch': touchCondition('Dazing Touch', { condition: 'dazed', rounds: 1, hdCheck: (u, t) => t.hitDice() < u.classLevel('wizard') || t.hitDice() <= 1 }),
-  'grave-touch': touchCondition('Grave Touch', { condition: 'shaken', rounds: (u) => Math.max(1, half(Math.max(u.classLevel('wizard'), u.classLevel('sorcerer')))) }),
-  'touch-of-evil': touchCondition('Touch of Evil', { condition: 'sickened', rounds: (u) => Math.max(1, half(u.classLevel('cleric'))) }),
+  'dazing-touch': touchCondition('Dazing Touch', { condition: 'dazed', rounds: 1, ability: 'int', hdCheck: (u, t) => t.hitDice() < schoolLvl(u) || t.hitDice() <= 1 }),
+  'grave-touch': touchCondition('Grave Touch', { condition: 'shaken', rounds: (u) => Math.max(1, half(Math.max(schoolLvl(u), bloodLvl(u)))), ability: (u) => (schoolLvl(u) >= bloodLvl(u) ? 'int' : 'cha') }),
+  'touch-of-evil': touchCondition('Touch of Evil', { condition: 'sickened', rounds: (u) => Math.max(1, half(domainLvl(u))) }),
   'bleeding-touch': {
-    name: 'Bleeding Touch', action: 'standard', target: 'enemy', resource: (u, id) => `power:${id}`,
+    name: 'Bleeding Touch', action: 'standard', target: 'enemy', resource: (u, id) => `power:${id}`, perDay: usesPerDay('wis'),
     use({ user, target, rng }) {
       const atk = touchAttack(user, target, 'meleeTouch', rng);
       if (!atk.hit) return { target: target.id, attack: atk, note: 'missed' };
-      target.addEffect(makeEffect({ key: 'power:bleeding-touch', name: 'Bleeding Touch', remaining: Math.max(1, half(user.classLevel('cleric'))), ongoing: { dice: '1d6', type: 'bleed' } }));
+      target.addEffect(makeEffect({ key: 'power:bleeding-touch', name: 'Bleeding Touch', remaining: Math.max(1, half(domainLvl(user))), ongoing: { dice: '1d6', type: 'bleed' } }));
       return { target: target.id, attack: atk };
     },
   },
-  'touch-of-good': touchBuff('Touch of Good', { modifiers: (u, n) => { const b = Math.max(1, half(u.classLevel('cleric'))); return [mod('attack', b, 'sacred', n), mod('skill', b, 'sacred', n), mod('abilityCheck', b, 'sacred', n), mod('save', b, 'sacred', n)]; } }),
+  'touch-of-good': touchBuff('Touch of Good', { modifiers: (u, n) => { const b = Math.max(1, half(domainLvl(u))); return [mod('attack', b, 'sacred', n), mod('skill', b, 'sacred', n), mod('abilityCheck', b, 'sacred', n), mod('save', b, 'sacred', n)]; } }),
   'touch-of-law': touchBuff('Touch of Law', { modifiers: () => [], flags: ['take11'] }),
   'touch-of-chaos': touchCondition('Touch of Chaos', { condition: 'chaos-touched', rounds: 1 }),
   'bit-of-luck': touchBuff('Bit of Luck', { modifiers: () => [], flags: ['rollTwiceBetter'] }),
-  'strength-surge-domain': touchBuff('Strength Surge', { modifiers: (u, n) => { const b = Math.max(1, half(u.classLevel('cleric'))); return [mod('attack.melee', b, 'enhancement', n), mod('cmb', b, 'enhancement', n), mod('abilityCheck.str', b, 'enhancement', n)]; } }),
-  'battle-rage': touchBuff('Battle Rage', { modifiers: (u, n) => [mod('damage.melee', Math.max(1, half(u.classLevel('cleric'))), 'untyped', n)] }),
+  'strength-surge-domain': touchBuff('Strength Surge', { modifiers: (u, n) => { const b = Math.max(1, half(domainLvl(u))); return [mod('attack.melee', b, 'enhancement', n), mod('cmb', b, 'enhancement', n), mod('abilityCheck.str', b, 'enhancement', n)]; } }),
+  'battle-rage': touchBuff('Battle Rage', { modifiers: (u, n) => [mod('damage.melee', Math.max(1, half(domainLvl(u))), 'untyped', n)] }),
   'destructive-smite': {
-    name: 'Destructive Smite', action: 'free', target: 'self', resource: (u, id) => `power:${id}`,
+    name: 'Destructive Smite', action: 'free', target: 'self', resource: (u, id) => `power:${id}`, perDay: usesPerDay('wis'),
     use({ user }) {
-      const b = Math.max(1, half(user.classLevel('cleric')));
+      const b = Math.max(1, half(domainLvl(user)));
       user.addEffect(makeEffect({ key: 'power:destructive-smite', name: 'Destructive Smite', remaining: 1, modifiers: [mod('damage.melee', b, 'morale', 'Destructive smite')], dischargeOnHit: true }));
       return { bonus: b };
     },
   },
   'rebuke-death': {
-    name: 'Rebuke Death', action: 'standard', target: 'ally', resource: (u, id) => `power:${id}`,
+    name: 'Rebuke Death', action: 'standard', target: 'ally', resource: (u, id) => `power:${id}`, perDay: usesPerDay('wis'),
     use({ user, target, rng }) {
       if (!target || target.hp.current >= 0) throw err('Target must be below 0 hit points');
-      return { target: target.id, healed: target.heal(dice.total(`1d4+${half(user.classLevel('cleric'))}`, rng)) };
+      return { target: target.id, healed: target.heal(dice.total(`1d4+${half(domainLvl(user))}`, rng)) };
     },
   },
   copycat: {
-    name: 'Copycat', action: 'move', target: 'self', resource: (u, id) => `power:${id}`,
+    name: 'Copycat', action: 'move', target: 'self', resource: (u, id) => `power:${id}`, perDay: usesPerDay('wis'),
     use({ user }) {
-      user.addEffect(makeEffect({ key: 'power:copycat', name: 'Copycat', remaining: user.classLevel('cleric'), images: 1 }));
+      user.addEffect(makeEffect({ key: 'power:copycat', name: 'Copycat', remaining: domainLvl(user), images: 1 }));
       return { images: 1 };
     },
   },
@@ -596,7 +602,7 @@ const ABILITIES = {
   'minor-magic': { name: 'Minor Magic', action: 'standard', target: 'enemy', use(ctx) { return spellLike(ctx, ctx.options.spell || 'ray-of-frost', 0, ctx.user.classLevel('rogue'), 'minorMagic', 3); } },
   'major-magic': { name: 'Major Magic', action: 'standard', target: 'enemy', use(ctx) { return spellLike(ctx, ctx.options.spell || 'magic-missile', 1, ctx.user.classLevel('rogue'), 'majorMagic', 2); } },
 
-  // ------------------------------------------------------------ Duelist / Mystic theurge / Darkfire
+  // ------------------------------------------------------------ Duelist / Mystic theurge
   parry: {
     name: 'Parry', action: 'free', target: 'self',
     use({ user }) {
@@ -610,18 +616,6 @@ const ABILITIES = {
       spend(user, 'spellSynthesis');
       user.addEffect(makeEffect({ key: 'ability:spell-synthesis', name: 'Spell Synthesis', remaining: 1, flags: ['spellSynthesis'], modifiers: [mod('srCheck', 2, 'untyped', 'Spell synthesis')] }));
       return {};
-    },
-  },
-  'darkfire-bolt': {
-    name: 'Darkfire Bolt', action: 'standard', target: 'enemy',
-    use({ user, target, rng }) {
-      spend(user, 'darkfireBolt');
-      const n = Math.max(1, half(user.classLevel('darkfire-adept')));
-      const atk = touchAttack(user, target, 'rangedTouch', rng);
-      if (!atk.hit) return { target: target.id, attack: atk, note: 'missed' };
-      const mult = atk.crit ? 2 : 1;
-      const res = applyDamage(target, [{ amount: dice.total(`${n}d6`, rng) * mult, type: 'fire' }, { amount: dice.total(`${n}d6`, rng) * mult, type: target.isUndead() ? 'untyped' : 'negative' }], { ignoreResist: user.flagValue('ignoreFireResist') || 0 });
-      return { target: target.id, attack: atk, damage: res.total, details: res.details, state: res.state };
     },
   },
 
@@ -695,4 +689,4 @@ function useAbility(user, id, ctx) {
   return { ability: id, name: ab.name, action: ab.action, ...ab.use({ ...ctx, user, options: ctx.options || {} }) };
 }
 
-module.exports = { ABILITIES, getAbility, useAbility, channel };
+module.exports = { ABILITIES, getAbility, useAbility, channel, usesPerDay };

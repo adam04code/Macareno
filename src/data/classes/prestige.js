@@ -3,7 +3,7 @@
 const { KNOWLEDGE_ALL } = require('./base');
 
 /**
- * Prestige classes (Core Rulebook) plus the Darkfire Adept.
+ * Prestige classes (Core Rulebook, Advanced Player's Guide).
  *
  * requirements: evaluated by src/engine/prerequisites.js.
  * advancesCasting: at the listed levels the character gains spells per day
@@ -16,7 +16,7 @@ const range = (a, b) => Array.from({ length: b - a + 1 }, (_, i) => a + i);
 const PRESTIGE = {
   'arcane-trickster': {
     name: 'Arcane Trickster', hitDie: 6, skillRanks: 4, bab: 'half', saves: { fort: 'poor', ref: 'good', will: 'good' },
-    classSkills: ['acrobatics', 'appraise', 'bluff', 'climb', 'craft', 'diplomacy', 'disable-device', 'disguise', 'escape-artist', ...KNOWLEDGE_ALL, 'perception', 'profession', 'sense-motive', 'sleight-of-hand', 'spellcraft', 'stealth', 'swim'],
+    classSkills: ['acrobatics', 'appraise', 'bluff', 'climb', 'diplomacy', 'disable-device', 'disguise', 'escape-artist', ...KNOWLEDGE_ALL, 'perception', 'sense-motive', 'sleight-of-hand', 'spellcraft', 'stealth', 'swim'],
     requirements: {
       alignment: (al) => al[0] !== 'L', alignmentText: 'Any nonlawful',
       skills: { 'disable-device': 4, 'escape-artist': 4, 'knowledge-arcana': 4 },
@@ -25,9 +25,9 @@ const PRESTIGE = {
     advancesCasting: { levels: range(1, 10), traditions: ['arcane'] },
     features: {
       1: ['ranged-legerdemain'], 2: ['sneak-attack'], 3: ['impromptu-sneak-attack'], 4: ['sneak-attack'], 5: ['tricky-spells'],
-      6: ['sneak-attack'], 7: ['impromptu-sneak-attack'], 8: ['sneak-attack'], 9: ['invisible-thief', 'tricky-spells'], 10: ['sneak-attack', 'surprise-spells'],
+      6: ['sneak-attack'], 7: ['impromptu-sneak-attack', 'tricky-spells'], 8: ['sneak-attack'], 9: ['invisible-thief', 'tricky-spells'], 10: ['sneak-attack', 'surprise-spells'],
     },
-    progressions: { sneakAttack: (l) => Math.floor(l / 2), impromptuSneakAttack: (l) => (l >= 7 ? 2 : l >= 3 ? 1 : 0), trickySpells: (l) => (l >= 9 ? 5 : l >= 5 ? 3 : 0) },
+    progressions: { sneakAttack: (l) => Math.floor(l / 2), impromptuSneakAttack: (l) => (l >= 7 ? 2 : l >= 3 ? 1 : 0), trickySpells: (l) => (l >= 9 ? 5 : l >= 7 ? 4 : l >= 5 ? 3 : 0) },
   },
 
   assassin: {
@@ -54,19 +54,20 @@ const PRESTIGE = {
     classSkills: ['diplomacy', 'escape-artist', 'fly', 'knowledge-arcana', 'knowledge-history', 'knowledge-nature', 'knowledge-nobility', 'knowledge-planes', 'knowledge-religion', 'linguistics', 'perception', 'spellcraft'],
     requirements: {
       raceNot: ['dragon'], skills: { 'knowledge-arcana': 5 }, languages: ['Draconic'],
-      spontaneousArcane: true, sorcererBloodline: 'draconic',
+      casting: { tradition: 'arcane', level: 1 }, spontaneousArcane: true, sorcererBloodline: 'draconic',
     },
     advancesCasting: { levels: [2, 3, 4, 6, 7, 8, 10], traditions: ['arcane'] },
     features: {
-      1: ['blood-of-dragons', 'dd-natural-armor', 'dd-bonus-spell'], 2: ['dd-ability-boost', 'dragon-bite'], 3: ['dd-breath-weapon'],
-      4: ['dd-ability-boost', 'dd-natural-armor'], 5: ['dd-blindsense', 'dd-bonus-spell'], 6: ['dd-ability-boost'], 7: ['dragon-form', 'dd-natural-armor'],
-      8: ['dd-ability-boost'], 9: ['dd-wings', 'dd-bonus-spell'], 10: ['dd-blindsense', 'dragon-form'],
+      1: ['blood-of-dragons', 'dd-natural-armor'], 2: ['dd-ability-boost', 'dd-bloodline-feat', 'dragon-bite'], 3: ['dd-breath-weapon'],
+      4: ['dd-ability-boost', 'dd-natural-armor'], 5: ['dd-blindsense', 'dd-bloodline-feat'], 6: ['dd-ability-boost'], 7: ['dragon-form', 'dd-natural-armor'],
+      8: ['dd-ability-boost', 'dd-bloodline-feat'], 9: ['dd-wings'], 10: ['dd-blindsense', 'dragon-form'],
     },
     progressions: {
       sorcererBloodlineLevel: (l) => l, ddNaturalArmor: (l) => (l >= 7 ? 3 : l >= 4 ? 2 : 1),
       ddStr: (l) => (l >= 4 ? 4 : l >= 2 ? 2 : 0), ddCon: (l) => (l >= 6 ? 2 : 0), ddInt: (l) => (l >= 8 ? 2 : 0),
-      ddLevel: (l) => l, ddBonusSpells: (l) => (l >= 9 ? 3 : l >= 5 ? 2 : 1),
+      ddLevel: (l) => l,
     },
+    bonusFeats: { levels: [2, 5, 8], list: 'bloodline' },
   },
 
   duelist: {
@@ -103,21 +104,6 @@ const PRESTIGE = {
     progressions: { combinedSpellsLevel: (l) => Math.min(5, Math.ceil(l / 2)) },
   },
 
-  'darkfire-adept': {
-    name: 'Darkfire Adept', hitDie: 6, skillRanks: 2, bab: 'half', saves: { fort: 'poor', ref: 'poor', will: 'good' },
-    source: 'Reconstruction: the Darkfire Adept is a third-party OGL prestige archetype (Purple Duck Games) whose text could not be retrieved; this implementation follows its theme (shadow-wreathed fire) with mechanics balanced against the Core prestige classes.',
-    classSkills: ['bluff', 'intimidate', 'knowledge-arcana', 'knowledge-planes', 'perception', 'spellcraft', 'stealth', 'use-magic-device'],
-    requirements: {
-      skills: { 'knowledge-arcana': 5, 'knowledge-planes': 2 }, feats: ['spell-focus'], featParams: { 'spell-focus': 'evocation' },
-      casting: { tradition: 'arcane', level: 2 }, castsDescriptor: ['fire', 'darkness'],
-    },
-    advancesCasting: { levels: range(1, 10), traditions: ['arcane'] },
-    features: {
-      1: ['darkfire', 'shadow-sight'], 2: ['darkfire-bolt'], 3: ['umbral-flames'], 4: ['cloak-of-cinders'], 5: ['darkfire-bolt'],
-      6: ['shadow-sight'], 7: ['devouring-darkfire'], 8: ['darkfire-bolt'], 9: ['shadow-sight'], 10: ['darkfire-apotheosis'],
-    },
-    progressions: { darkfireLevel: (l) => l },
-  },
 };
 
 for (const [id, c] of Object.entries(PRESTIGE)) {

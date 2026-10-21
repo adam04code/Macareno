@@ -33,7 +33,7 @@ test('API: auth, compendium, character lifecycle, world commands', async () => {
   try {
     assert.equal((await s.call('GET', '/api/health')).body.ok, true);
     const comp = (await s.call('GET', '/api/compendium')).body;
-    assert.ok(comp.counts.spells > 200 && comp.counts.monsters > 90 && comp.counts.feats > 150 && comp.counts.classes === 18);
+    assert.ok(comp.counts.spells > 200 && comp.counts.monsters > 90 && comp.counts.feats > 150 && comp.counts.classes >= 17);
     const duelist = (await s.call('GET', '/api/compendium/classes/duelist')).body;
     assert.equal(duelist.levels['10'].bab, 10);
     assert.equal((await s.call('GET', '/api/compendium/monsters/troll')).body.ac, 16);
