@@ -79,8 +79,10 @@ function featSlotsAt(char, classId, classLevel, charLevel) {
   const slots = [];
   if (charLevel % 2 === 1) slots.push({ kind: 'general' });
   if (charLevel === 1 && char.raceDef().bonusFeats) for (let i = 0; i < char.raceDef().bonusFeats; i++) slots.push({ kind: 'general', source: 'race' });
-  const bf = char.classDef(classId).bonusFeats;
+  const def = char.classDef(classId);
+  const bf = def.bonusFeats;
   if (bf && bf.levels.includes(classLevel)) slots.push({ kind: bf.list, source: classId, ...(bf.feats ? { feats: bf.feats } : {}) });
+  for (const kind of (def.extraFeatSlots || {})[classLevel] || []) slots.push({ kind, source: classId });
   return slots;
 }
 
@@ -222,6 +224,10 @@ function optionAllowed(char, groupKey, id, classLevel, classId) {
   }
   if (opt.validate) {
     const msg = opt.validate(char, classLevel);
+    if (msg) return msg;
+  }
+  if (group.validate) {
+    const msg = group.validate(char, id);
     if (msg) return msg;
   }
   return null;
@@ -419,7 +425,7 @@ function initialSpells(char, classId, spells = {}) {
   const st = spellcasting.state(char, classId);
   if (d.spellbook) {
     const list = spells.spellbook || [];
-    const allowed = 3 + Math.max(0, char.baseAbilityMod('int')) + (classId === 'wizard' && char.choices.school && char.choices.school !== 'universalist' ? 1 : 0);
+    const allowed = (d.startingSpellbook ? d.startingSpellbook(char) : 3 + Math.max(0, char.baseAbilityMod('int'))) + (classId === 'wizard' && char.choices.school && char.choices.school !== 'universalist' ? 1 : 0);
     const first = list.filter((id) => SPELLS[id] && spellLevelFor(SPELLS[id], d.list) === 1);
     if (list.some((id) => !SPELLS[id] || spellLevelFor(SPELLS[id], d.list) === null)) errors.push(`Spellbook contains spells not on the ${d.list} list`);
     if (list.some((id) => SPELLS[id] && spellLevelFor(SPELLS[id], d.list) > 1)) errors.push('Starting spellbooks may only hold 0- and 1st-level spells');
@@ -478,6 +484,8 @@ function createCharacter(spec, opts = {}) {
   const cdef = CLASSES[classId];
   if (cdef.alignment && !cdef.alignment(char.alignment)) errors.push(`${cdef.name}s must be ${cdef.alignmentText}`);
   if (cdef.requiresDeity && !OPTIONS.DEITIES[spec.deity]) errors.push(`${cdef.name}s must choose a deity (${Object.keys(OPTIONS.DEITIES).join(', ')})`);
+  else if (cdef.requiresDeity && alignmentStepDistance(OPTIONS.DEITIES[spec.deity].alignment, spec.alignment) > 1) errors.push(`${cdef.name}s must be within one step of their deity's alignment (${OPTIONS.DEITIES[spec.deity].alignment})`);
+  if (cdef.spellcasting && cdef.spellcasting.oracleCures) char.choices.oracleCures = spec.choices && spec.choices.oracleCures === 'inflict' ? 'inflict' : 'cure';
   // Favored class(es).
   const favored = spec.favoredClasses || [spec.favoredClass || classId];
   if (favored.length > (race.favoredClasses || 1)) errors.push(`${race.name}s may have ${race.favoredClasses || 1} favored class(es)`);
@@ -513,7 +521,7 @@ function createCharacter(spec, opts = {}) {
   errors.push(...initialSpells(char, classId, spec.spells || {}));
   if (errors.length) throw err('Invalid character', 400, errors);
   // Equipment & money.
-  const gold = opts.startingGold ?? STARTING_WEALTH[classId] ?? 100;
+  const gold = opts.startingGold ?? STARTING_WEALTH[classId] ?? cdef.startingWealth ?? 100;
   char.money = T.toCopper(gold);
   if (spec.kit !== false && CLASS_KITS[classId]) {
     for (const [itemId, qty] of CLASS_KITS[classId]) {
@@ -613,7 +621,8 @@ function levelUp(char, spec, opts = {}) {
     const learns = spec.spells && Array.isArray(spec.spells[cid]) ? spec.spells[cid] : spec.spells && Array.isArray(spec.spells.learn) ? spec.spells.learn : [];
     if (!advanced) continue;
     if (d.spellbook) {
-      if (learns.length > 2) errors.push(`${CLASSES[cid].name}: add at most 2 spells to the spellbook per level`);
+      const perLevel = d.learnPerLevel || 2;
+      if (learns.length > perLevel) errors.push(`${CLASSES[cid].name}: add at most ${perLevel} spells to the ${d.bookName || 'spellbook'} per level`);
       for (const id of learns) {
         try {
           spellcasting.learnSpell(clone, cid, id);
@@ -760,7 +769,8 @@ function autoLevelSpec(char, classId, prefs = {}) {
       const st = spellcasting.state(c2, cid);
       const picks = [];
       if (d.spellbook) {
-        for (let l = max; l >= 1 && picks.length < 2; l--) for (const sp of spellList(d.list, l)) if (picks.length < 2 && !st.spellbook.includes(sp.id) && !spellcasting.isOpposition(c2, cid, sp)) picks.push(sp.id);
+        const perLevel = d.learnPerLevel || 2;
+        for (let l = max; l >= 1 && picks.length < perLevel; l--) for (const sp of spellList(d.list, l)) if (picks.length < perLevel && !st.spellbook.includes(sp.id) && !spellcasting.isOpposition(c2, cid, sp)) picks.push(sp.id);
       } else if (d.style === 'spontaneous') {
         const limit = spellcasting.knownLimit(c2, cid);
         for (let l = 0; l < limit.length; l++) {

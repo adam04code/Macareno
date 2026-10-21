@@ -535,6 +535,11 @@ class Creature {
           expired.push(e);
           for (const end of e.onEnd || []) {
             if (end.condition) this.addCondition(end.condition, end.rounds ?? null, { name: e.name });
+            if (end.slay) {
+              const s = require('./checks').savingThrow(this, end.save || 'fort', { dc: end.dc, rng, tags: ['death'] });
+              events.push({ type: 'save', effect: e.name, save: s });
+              if (!s.success && !this.isImmune(['death'])) this.die();
+            }
           }
         }
       }

@@ -158,6 +158,11 @@ test('all base classes level to 20', () => {
     ranger: { scores: ARRAYS.dex, racialBonus: 'dex', choices: { 'favored-enemy': 'humanoid:orc' } },
     magus: { scores: { str: 16, dex: 12, con: 12, int: 15, wis: 10, cha: 8 }, racialBonus: 'int', spells: { spellbook: ['shocking-grasp', 'magic-missile', 'shield', 'frostbite', 'true-strike', 'grease'] } },
     druid: { scores: ARRAYS.wis, racialBonus: 'wis', choices: { 'nature-bond': 'animal-companion', companion: 'wolf' } },
+    alchemist: { scores: ARRAYS.int, racialBonus: 'int', spells: { spellbook: ['shield', 'cure-light-wounds', 'enlarge-person', 'true-strike', 'jump'] } },
+    cavalier: { choices: { order: 'lion', companion: 'horse' }, feats: [{ id: 'toughness' }, { id: 'iron-will' }, { id: 'coordinated-defense' }] },
+    inquisitor: { scores: ARRAYS.wis, racialBonus: 'wis', deity: 'the-iron-judge', alignment: 'LN', choices: { 'inquisitor-domain': 'war' }, spells: { known: ['guidance', 'light', 'virtue', 'stabilize', 'bless', 'divine-favor'] } },
+    oracle: { scores: ARRAYS.cha, racialBonus: 'cha', choices: { mystery: 'life', curse: 'wasting', revelation: 'life:channel' }, spells: { known: ['guidance', 'light', 'virtue', 'stabilize', 'bless', 'divine-favor'] } },
+    witch: { scores: ARRAYS.int, racialBonus: 'int', choices: { hex: 'healing', patron: 'endurance', familiar: 'toad' }, spells: { spellbook: ['sleep', 'mage-armor', 'burning-hands', 'command', 'cure-light-wounds', 'ray-of-enfeeblement'] } },
   };
   const { BASE_CLASSES } = require('../src/data/classes');
   for (const id of Object.keys(BASE_CLASSES)) assert.ok(setups[id], `level-20 test setup missing for ${id}`);

@@ -1,9 +1,11 @@
 'use strict';
 
-const { CLASSES: BASE } = require('./base');
+const { CLASSES: CORE } = require('./base');
+const { CLASSES: APG } = require('./apg');
 const { PRESTIGE } = require('./prestige');
 const { ARCHETYPES } = require('./archetypes');
 
+const BASE = { ...CORE, ...APG };
 const CLASSES = { ...BASE, ...PRESTIGE };
 
 for (const [classId, list] of Object.entries(ARCHETYPES)) {

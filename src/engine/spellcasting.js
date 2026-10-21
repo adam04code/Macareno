@@ -40,6 +40,12 @@ function castingAbilityScore(char, classId) {
   return char.ability(sc(classId).ability);
 }
 
+/** Highest spell level with any slots, without calling grantedSpells (avoids recursion). */
+function maxSpellLevelRaw(char, classId) {
+  const m = maxSpellLevel(char, classId);
+  return m === null ? 0 : m;
+}
+
 /** Highest spell level the class can cast (null if none). */
 function maxSpellLevel(char, classId) {
   const slots = slotsPerDay(char, classId);
@@ -97,10 +103,31 @@ function knownLimit(char, classId) {
   return d.known[lvl] || [];
 }
 
-/** Bonus spells known automatically (sorcerer bloodline spells, cleric domain spells). */
+const CURE_SPELLS = ['cure-light-wounds', 'cure-moderate-wounds', 'cure-serious-wounds', 'cure-critical-wounds', 'mass-cure-light-wounds', 'mass-cure-moderate-wounds', 'mass-cure-serious-wounds', 'mass-cure-critical-wounds'];
+const INFLICT_SPELLS = ['inflict-light-wounds', 'inflict-moderate-wounds', 'inflict-serious-wounds', 'inflict-critical-wounds', 'mass-inflict-light-wounds', 'mass-inflict-moderate-wounds', 'mass-inflict-serious-wounds', 'mass-inflict-critical-wounds'];
+
+/** Bonus spells known automatically (bloodline, mystery, curse, patron and oracle cure/inflict spells). */
 function grantedSpells(char, classId) {
   const out = {};
   const d = sc(classId);
+  const add = (lvl, spell) => {
+    if (!SPELLS[spell]) return;
+    (out[lvl] = out[lvl] || []).includes(spell) || out[lvl].push(spell);
+  };
+  const classLvl = char.effectiveCasterClassLevel(classId);
+  // Mystery spells (oracle) and patron spells (witch): one every even class level, of spell level = class level / 2.
+  const table = d.mysterySpells && char.choices.mystery ? OPTIONS.MYSTERY_SPELLS(char.choices.mystery) : d.patronSpells && char.choices.patron ? OPTIONS.PATRON_SPELLS(char.choices.patron) : null;
+  if (table) for (const [at, spell] of Object.entries(table)) if (classLvl >= Number(at)) add(Number(at) / 2, spell);
+  if (d.oracleCures) {
+    const list = char.choices.oracleCures === 'inflict' ? INFLICT_SPELLS : CURE_SPELLS;
+    const max = maxSpellLevelRaw(char, classId);
+    list.forEach((sp, i) => { if (i + 1 <= max) add(i + 1, sp); });
+  }
+  if (d.mysterySpells && char.choices.curse) {
+    const curse = OPTIONS.OPTION_GROUPS.curse.table[char.choices.curse];
+    const cl = char.classLevel('oracle') + Math.floor((char.hitDice() - char.classLevel('oracle')) / 2);
+    for (const [at, ids] of Object.entries((curse && curse.bonusSpells) || {})) if (cl >= Number(at)) for (const sp of ids) if (SPELLS[sp]) add(spellLevelFor(SPELLS[sp], 'cleric') ?? spellLevelFor(SPELLS[sp], 'wizard') ?? 1, sp);
+  }
   if (d.bloodlineSpells && char.bloodline()) {
     const lvl = char.prog('sorcererBloodlineLevel');
     for (const [at, spell] of Object.entries(char.bloodline().spells)) {
@@ -114,6 +141,12 @@ function grantedSpells(char, classId) {
 }
 
 /** Domain spells by level for a class with domain slots (cleric: choices.domains, druid: choices['druid-domain']). */
+/** Level at which a granted (mystery, patron, bloodline, curse) spell is known, or null. */
+function grantedLevel(char, classId, spellId) {
+  const found = Object.entries(grantedSpells(char, classId)).find(([, ids]) => ids.includes(spellId));
+  return found ? Number(found[0]) : null;
+}
+
 function domainSpells(char, classId = 'cleric') {
   const out = {};
   const d = sc(classId);
@@ -148,8 +181,9 @@ function availableSpells(char, classId) {
       const s = SPELLS[id];
       if (s) push(spellLevelFor(s, d.list), id);
     }
-    // Cantrips are always in the spellbook.
+    // Cantrips are always in the spellbook (and the witch's familiar).
     for (const s of spellList(d.list, 0)) if (!isOpposition(char, classId, s)) push(0, s.id);
+    for (const [lvl, ids] of Object.entries(grantedSpells(char, classId))) ids.forEach((id) => push(Number(lvl), id));
   } else {
     for (const [lvl, ids] of Object.entries(st.known)) ids.forEach((id) => push(Number(lvl), id));
     for (const [lvl, ids] of Object.entries(grantedSpells(char, classId))) ids.forEach((id) => push(Number(lvl), id));
@@ -227,6 +261,7 @@ function prepareSpells(char, classId, list) {
     let base = spellLevelFor(spell, d.list);
     const isDomain = d.domainSlots && Object.entries(domainSpells(char, classId)).some(([l, ids]) => ids.includes(spell.id) && (base === null || Number(l) <= base || e.slot === 'domain'));
     if (base === null && isDomain) base = Number(Object.entries(domainSpells(char, classId)).find(([, ids]) => ids.includes(spell.id))[0]);
+    if (base === null) base = grantedLevel(char, classId, spell.id);
     if (base === null) throw err(`${spell.name} is not on the ${d.list} list`);
     if (!Object.values(avail).some((ids) => ids.includes(spell.id))) throw err(`${spell.name} is not available to prepare`);
     for (const m of e.metamagic || []) if (!char.hasFeat(m)) throw err(`Missing metamagic feat ${m}`);
@@ -268,6 +303,7 @@ function planCast(char, classId, spellId, opts = {}) {
   const st = state(char, classId);
   const metamagic = opts.metamagic || [];
   let base = spellLevelFor(spell, d.list);
+  if (base === null) base = grantedLevel(char, classId, spellId);
   if (base === null && d.domainSlots) {
     const found = Object.entries(domainSpells(char, classId)).find(([, ids]) => ids.includes(spellId));
     if (found) base = Number(found[0]);

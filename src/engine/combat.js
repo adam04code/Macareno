@@ -142,17 +142,48 @@ class Encounter {
   }
 
   isFlanked(target, attacker) {
-    if (target.hasFlag('improvedUncannyDodge') || target.isImmune(['flanking'])) return false;
+    return this.flankingPartners(target, attacker).length > 0;
+  }
+
+  /** Allies that flank `target` together with `attacker` (opposite sides, both threatening). */
+  flankingPartners(target, attacker) {
+    if (target.hasFlag('improvedUncannyDodge') || target.isImmune(['flanking'])) return [];
     const tp = this.get(target.id).position;
     const ap = this.get(attacker.id).position;
-    if (gridDistance(tp, ap) > this.meleeReach(attacker)) return false;
+    if (gridDistance(tp, ap) > this.meleeReach(attacker)) return [];
+    const out = [];
     for (const ally of this.alliesOf(attacker)) {
       if (ally.id === attacker.id || !this.threatens(ally, target)) continue;
       const bp = this.get(ally.id).position;
       const dot = (ap.x - tp.x) * (bp.x - tp.x) + (ap.y - tp.y) * (bp.y - tp.y);
-      if (dot < 0) return true;
+      if (dot < 0) out.push(ally);
     }
-    return false;
+    return out;
+  }
+
+  /** Allies' class-feature auras (aura of courage, banner...) refresh on the creature whose turn begins. */
+  applyAuras(c) {
+    const cr = c.creature;
+    cr.removeEffectsWhere((e) => (e.key || '').startsWith('aura:'));
+    const { FEATURES } = require('../data/features');
+    for (const ally of this.alliesOf(cr)) {
+      if (ally.id === cr.id || ally.kind !== 'character' || !ally.isAlive() || ally.hasFlag('unconscious')) continue;
+      for (const f of ally.features()) {
+        const def = FEATURES[f.key];
+        if (!def || !def.aura) continue;
+        if (this.distance(ally, cr) > def.aura.radius) continue;
+        cr.addEffect(makeEffect({ key: `aura:${f.key}:${ally.id}`, name: `${def.name} (${ally.name})`, kind: 'ability', remaining: 1, modifiers: def.aura.modifiers(ally) }));
+      }
+    }
+  }
+
+  /**
+   * Teamwork feats apply when an ally also has the feat (or the attacker has
+   * solo tactics, or the ally was granted it by a cavalier's tactician).
+   */
+  sharesTeamwork(attacker, ally, feat) {
+    const has = (c) => (c.hasFeat && c.hasFeat(feat)) || c.effects.some((e) => (e.grantedFeats || []).includes(feat));
+    return has(attacker) && (has(ally) || attacker.hasFlag('soloTactics'));
   }
 
   targetInMelee(target, attacker) {
@@ -191,6 +222,7 @@ class Encounter {
     cr.removeEffectsWhere((e) => e.key === 'combat:total-defense' || e.key === 'combat:charging');
     if (cr.toggles) cr.toggles.fightingDefensively = false;
     cr.touch();
+    this.applyAuras(c);
     const events = [];
     // Natural healing for monsters.
     if (cr.naturalHealing) for (const h of cr.naturalHealing()) if (h.healed) events.push(`${cr.name} heals ${h.healed} (${h.type}).`);
@@ -465,7 +497,12 @@ class Encounter {
     const dc = this.combatants.get(defender.id);
     if (ac && dc) {
       ctx.distance = gridDistance(ac.position, dc.position);
-      if (profile.melee) ctx.flanking = this.isFlanked(defender, attacker);
+      if (profile.melee) {
+        const partners = this.flankingPartners(defender, attacker);
+        ctx.flanking = partners.length > 0;
+        if (partners.some((p) => this.sharesTeamwork(attacker, p, 'outflank'))) ctx.flankBonus = 4;
+        if (partners.some((p) => this.sharesTeamwork(attacker, p, 'precise-strike'))) ctx.teamworkPrecision = 1;
+      }
       if (profile.ranged) ctx.targetInMelee = this.targetInMelee(defender, attacker);
     }
     if (attacker.toggles && attacker.toggles.powerAttack && attacker.hasFeat && attacker.hasFeat('power-attack')) ctx.powerAttack = true;
@@ -501,9 +538,16 @@ class Encounter {
     }
     const notes = [];
     const src = { id: attacker.id, name: attacker.name };
+    // Wards end when the warded creature is hit.
+    defender.removeEffectsWhere((e) => e.breaksWhenHit);
+    // Retribution hex: the attacker takes half the melee damage it deals.
+    if (profile.melee && attacker.hasFlag('retribution') && res.damage > 0) {
+      const back = applyDamage(attacker, [{ amount: Math.floor(res.damage / 2), type: 'untyped' }]);
+      notes.push(`${attacker.name} suffers ${back.total} retribution damage.`);
+    }
     for (const e of [...attacker.effects]) {
       if (e.key === 'ability:smite' && e.data.targetId === defender.id) e.data.hits += 1;
-      if (e.onHit && (profile.source === 'unarmed' || profile.monk)) {
+      if (e.onHit && (profile.source === 'unarmed' || profile.monk || e.onHitAny)) {
         const oh = e.onHit;
         const s = checks.savingThrow(defender, oh.save, { dc: oh.dc, rng: this.rng });
         if (!s.success) {
@@ -796,8 +840,9 @@ class Encounter {
     if (plan && plan.spontaneousMetamagic && actionType === 'standard') actionType = 'full';
     if (!opts.noActionCost) this.spend(c, actionType);
     const log = { actor: caster.id, spell: spell.id };
-    // Silence / verbal components.
-    if (caster.hasFlag('silenced') && spell.components.includes('V') && !metamagic.includes('silent-spell')) throw err('You are silenced');
+    const sc = !isSla && classId ? CLASSES[classId].spellcasting : null;
+    // Silence / verbal components (alchemist extracts need none; deaf oracles cast silently).
+    if (caster.hasFlag('silenced') && spell.components.includes('V') && !metamagic.includes('silent-spell') && !(sc && sc.noComponents) && !caster.hasFlag('silentCasting')) throw err('You are silenced');
     // Provoke unless casting defensively.
     const threatened = this.enemiesOf(caster).some((e) => this.threatens(e, caster));
     if (threatened && !opts.noProvoke && !isSla) {
@@ -846,8 +891,8 @@ class Encounter {
       }
     }
     if (plan) spellcasting.consume(caster, plan);
-    // Targets.
-    const targets = this.resolveSpellTargets(caster, spell, action, cl);
+    // Targets. Extracts affect only the drinker (unless the alchemist has Infusion).
+    const targets = sc && sc.selfOnly && !caster.hasFlag('infusion') ? [caster] : this.resolveSpellTargets(caster, spell, action, cl);
     const allies = this.alliesOf(caster);
     const enemies = this.enemiesOf(caster);
     const bl = caster.bloodline && caster.bloodline();
@@ -924,7 +969,7 @@ class Encounter {
     this.state = 'ended';
     this.winner = winner;
     // Award XP: defeated non-summoned enemies, divided among surviving characters on the winning side.
-    const defeated = [...this.combatants.values()].filter((c) => c.side !== winner && !c.creature.summoned && (!c.creature.isAlive() || ['dying', 'stable', 'unconscious'].includes(c.creature.hpState()) || c.creature.hasFlag('petrified')));
+    const defeated = [...this.combatants.values()].filter((c) => c.side !== winner && !c.creature.summoned && !c.creature.isCompanion && (!c.creature.isAlive() || ['dying', 'stable', 'unconscious'].includes(c.creature.hpState()) || c.creature.hasFlag('petrified')));
     this.defeated = defeated.map((c) => c.id);
     const xp = defeated.reduce((s, c) => s + (c.creature.kind === 'monster' ? xpForCr(c.creature.cr()) : xpForCr(Math.max(1, c.creature.hitDice() - 1))), 0);
     const recipients = [...this.combatants.values()].filter((c) => c.side === winner && c.creature.kind === 'character' && c.creature.isAlive());
@@ -936,7 +981,7 @@ class Encounter {
     }
     // Clear combat-only effects.
     for (const c of this.combatants.values()) {
-      c.creature.removeEffectsWhere((e) => (e.key || '').startsWith('combat:') || e.key === 'condition:grappled' || e.key === 'condition:grappling' || (e.key || '').startsWith('feint:'));
+      c.creature.removeEffectsWhere((e) => e.endsWithCombat || (e.key || '').startsWith('combat:') || e.key === 'condition:grappled' || e.key === 'condition:grappling' || (e.key || '').startsWith('feint:'));
       if (c.creature.toggles) c.creature.toggles.fightingDefensively = false;
     }
     this.emit('end', { winner, xp, share, defeated: this.defeated, text: winner ? `Combat ends. Victory for ${winner}.${share ? ` Each survivor earns ${share} XP.` : ''}` : 'Combat ends with no victor.' });

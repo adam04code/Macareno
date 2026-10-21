@@ -50,6 +50,24 @@ function d20Check(opts) {
   return result;
 }
 
+/** Fortune and misfortune effects: roll twice and take the better or worse result (they cancel out). */
+function rollTwiceMode(creature) {
+  if (!creature || !creature.hasFlag) return null;
+  const better = creature.hasFlag('rollTwiceBetter');
+  const worse = creature.hasFlag('rollTwiceWorse');
+  if (better === worse) return null;
+  return better ? 'better' : 'worse';
+}
+
+/** One d20 for a creature, honouring fortune/misfortune. */
+function creatureD20(creature, rng = defaultRng) {
+  const mode = rollTwiceMode(creature);
+  if (!mode) return rng.die(20);
+  const a = rng.die(20);
+  const b = rng.die(20);
+  return mode === 'better' ? Math.max(a, b) : Math.min(a, b);
+}
+
 function skillCheck(creature, skillId, opts = {}) {
   const def = SKILLS[skillId];
   if (!def) throw err(`Unknown skill: ${skillId}`);
@@ -58,20 +76,20 @@ function skillCheck(creature, skillId, opts = {}) {
   if (sk.blocked) throw err(`Cannot use ${def.name} while raging`);
   if (opts.take20 && opts.inCombat) throw err('Cannot take 20 while in combat or threatened');
   if (opts.take10 && opts.inCombat && !opts.allowTake10Stressed) throw err('Cannot take 10 while threatened or distracted');
-  return { type: 'skill', skill: skillId, name: def.name, ...d20Check({ ...opts, bonus: sk.total + (opts.circumstance || 0), label: def.name }), breakdown: sk.breakdown };
+  return { type: 'skill', skill: skillId, name: def.name, ...d20Check({ rollTwice: rollTwiceMode(creature), ...opts, bonus: sk.total + (opts.circumstance || 0), label: def.name }), breakdown: sk.breakdown };
 }
 
 function abilityCheck(creature, ability, opts = {}) {
   if (!ABILITIES.includes(ability)) throw err(`Unknown ability: ${ability}`);
   const bonus = creature.abilityMod(ability) + creature.stat(['abilityCheck', `abilityCheck.${ability}`], opts.tags || []).total + (opts.circumstance || 0);
-  return { type: 'ability', ability, ...d20Check({ ...opts, bonus, label: `${ability.toUpperCase()} check` }) };
+  return { type: 'ability', ability, ...d20Check({ rollTwice: rollTwiceMode(creature), ...opts, bonus, label: `${ability.toUpperCase()} check` }) };
 }
 
 /** Saving throw: natural 1 always fails, natural 20 always succeeds. */
 function savingThrow(creature, type, opts = {}) {
   if (!['fort', 'ref', 'will'].includes(type)) throw err(`Unknown save: ${type}`);
   const s = creature.save(type, opts.tags || []);
-  const res = d20Check({ ...opts, bonus: s.total + (opts.circumstance || 0), autoNatural: true, label: `${{ fort: 'Fortitude', ref: 'Reflex', will: 'Will' }[type]} save` });
+  const res = d20Check({ rollTwice: rollTwiceMode(creature), ...opts, bonus: s.total + (opts.circumstance || 0), autoNatural: true, label: `${{ fort: 'Fortitude', ref: 'Reflex', will: 'Will' }[type]} save` });
   return { type: 'save', save: type, ...res, breakdown: s.breakdown };
 }
 
@@ -110,7 +128,10 @@ function opposedSkills(a, skillA, b, skillB, opts = {}) {
 
 function initiativeRoll(creature, rng = defaultRng) {
   const bonus = creature.initiative();
-  const roll = rng.die(20);
+  // War sight (oracle): roll initiative two or three times and keep the best.
+  const times = Math.max(1, (creature.flagValue && creature.flagValue('initiativeRolls')) || 1);
+  let roll = 0;
+  for (let i = 0; i < times; i++) roll = Math.max(roll, rng.die(20));
   return { roll, bonus, total: roll + bonus, tiebreak: bonus * 100 + rng.die(99) };
 }
 
@@ -158,4 +179,4 @@ const SKILL_DCS = {
   'intimidate:demoralize': '10+hd+wis', 'bluff:feint': '10+bab+wis or sense motive',
 };
 
-module.exports = { d20Check, skillCheck, abilityCheck, savingThrow, casterLevelCheck, spellResistance, concentrationCheck, opposed, opposedSkills, initiativeRoll, stabilizeCheck, identifyCreature, SKILL_DCS };
+module.exports = { d20Check, rollTwiceMode, creatureD20, skillCheck, abilityCheck, savingThrow, casterLevelCheck, spellResistance, concentrationCheck, opposed, opposedSkills, initiativeRoll, stabilizeCheck, identifyCreature, SKILL_DCS };

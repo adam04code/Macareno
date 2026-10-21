@@ -34,7 +34,7 @@ function situational(attacker, defender, profile, ctx) {
   if (ctx.rapidShot) add('Rapid Shot', -2);
   if (ctx.spellCombat) add('Spell combat', -2);
   if (ctx.charging) add('Charge', 2);
-  if (ctx.flanking) add('Flanking', 2);
+  if (ctx.flanking) add('Flanking', ctx.flankBonus || 2);
   if (ctx.higherGround) add('Higher ground', 1);
   if (profile.natural && !profile.primary) add('Secondary natural attack', attacker.hasFeat && attacker.hasFeat('multiattack') ? -2 : -5);
   if (profile.natural && profile.primary && ctx.withManufactured && !profile.printed) add('Natural attack with weapons', attacker.hasFeat && attacker.hasFeat('multiattack') ? -2 : -5);
@@ -277,6 +277,19 @@ function rollDamage(attacker, defender, profile, ctx, crit) {
   for (const ex of profile.extraDamage || []) {
     packets.push({ amount: dice.total(ex.dice, rng), type: ex.type });
   }
+  // Bonus damage dice granted by effects (bane, judgments, studied target...): weapon damage or a separate energy packet.
+  for (const e of attacker.effects || []) {
+    for (const b of e.bonusDamage || []) {
+      if (b.melee && !profile.melee) continue;
+      if (b.weaponOnly && profile.source !== 'weapon') continue;
+      if (b.onlyIf && !b.onlyIf.some((t) => tags.includes(t))) continue;
+      if (b.precision && precisionImmune) continue;
+      const amt = dice.total(b.dice, rng) * (b.multiplies && !b.precision ? mult : 1);
+      if (!b.type || b.type === 'weapon') packets[0].amount += amt;
+      else packets.push({ amount: amt, type: b.type });
+    }
+  }
+  if (ctx.teamworkPrecision && !precisionImmune) packets[0].amount += dice.total(`${ctx.teamworkPrecision}d6`, rng);
   if (crit) {
     for (const sp of profile.burst ? [profile.burst] : []) packets.push({ amount: dice.total(`${Math.max(1, mult - 1)}d10`, rng), type: sp.type });
   }
@@ -307,7 +320,7 @@ function resolveAttack(attacker, defender, profile, ctx = {}) {
     const s = require('./checks').savingThrow(attacker, 'will', { dc: sanct.data.dc, rng });
     if (!s.success) return { ...out, hit: false, note: 'Sanctuary', save: s };
   }
-  const roll = rng.die(20);
+  const roll = require('./checks').creatureD20(attacker, rng);
   const total = roll + ab.total;
   out.roll = roll;
   out.total = total;

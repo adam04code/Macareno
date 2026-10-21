@@ -399,4 +399,31 @@ const OPTION_GROUPS = {
   'druid-domain': { table: DOMAINS, label: 'druid domain', single: true, progressions: { domainLevel: (c) => c.classLevel('druid') } },
 };
 
-module.exports = { HUNTERS_BONDS, NATURE_BONDS, DRUID_DOMAINS, grantCompanion, RAGE_POWERS, ROGUE_TALENTS, DOMAINS, ARCANE_SCHOOLS, BLOODLINES, MAGUS_ARCANA, MERCIES, COMBAT_STYLES, WEAPON_GROUPS, TERRAINS, FAVORED_ENEMY_TYPES, DRAGON_TYPES, DEITIES, OPTION_GROUPS };
+// Advanced Player's Guide classes.
+const APG = require('./classOptionsApg');
+Object.assign(OPTION_GROUPS, {
+  discovery: { table: APG.DISCOVERIES, label: 'discovery', levelProg: 'discoveryLevel' },
+  'grand-discovery': { table: APG.GRAND_DISCOVERIES, label: 'grand discovery', single: true },
+  order: { table: APG.CAVALIER_ORDERS, label: 'cavalier order', single: true },
+  'inquisitor-domain': {
+    table: DOMAINS, label: 'inquisitor domain', single: true, progressions: { domainLevel: (c) => c.classLevel('inquisitor') },
+    validate: (c, id) => {
+      const deity = DEITIES[c.deity];
+      if (deity && !deity.domains.includes(id)) return `${deity.name} does not grant the ${id} domain`;
+      const ax = c.axes();
+      if ((id === 'good' && !ax.good) || (id === 'evil' && !ax.evil) || (id === 'law' && !ax.lawful) || (id === 'chaos' && !ax.chaotic)) return `The ${id} domain requires a matching alignment`;
+      return null;
+    },
+  },
+  mystery: { table: APG.MYSTERIES, label: 'mystery', single: true },
+  curse: { table: APG.CURSES, label: "oracle's curse", single: true },
+  revelation: { table: APG.REVELATIONS, label: 'revelation', levelProg: 'mysteryLevel' },
+  hex: { table: APG.HEXES, label: 'hex', levelProg: 'hexLevel' },
+  patron: { table: APG.PATRONS, label: 'patron', single: true },
+  familiar: { table: APG.FAMILIARS, label: 'familiar', single: true },
+});
+
+const MYSTERY_SPELLS = (id) => (APG.MYSTERIES[id] ? APG.MYSTERIES[id].spells : {});
+const PATRON_SPELLS = (id) => (APG.PATRONS[id] ? Object.fromEntries(APG.PATRONS[id].spells.map((sp, i) => [2 * (i + 1), sp])) : {});
+
+module.exports = { MYSTERY_SPELLS, PATRON_SPELLS, HUNTERS_BONDS, NATURE_BONDS, DRUID_DOMAINS, grantCompanion, RAGE_POWERS, ROGUE_TALENTS, DOMAINS, ARCANE_SCHOOLS, BLOODLINES, MAGUS_ARCANA, MERCIES, COMBAT_STYLES, WEAPON_GROUPS, TERRAINS, FAVORED_ENEMY_TYPES, DRAGON_TYPES, DEITIES, OPTION_GROUPS };

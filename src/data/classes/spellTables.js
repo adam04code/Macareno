@@ -64,4 +64,35 @@ const MAGUS_PER_DAY = [
   r(5, 5, 5, 5, 4, 4, 2), r(5, 5, 5, 5, 5, 4, 3), r(5, 5, 5, 5, 5, 5, 4), r(5, 5, 5, 5, 5, 5, 5),
 ];
 
-module.exports = { FULL_PREPARED, SORCERER_PER_DAY, SORCERER_KNOWN, BARD_PER_DAY, BARD_KNOWN, HALF_CASTER, MAGUS_PER_DAY };
+// Alchemist extracts and other six-level casters without 0-level spells: the bard table without cantrips.
+const SIX_LEVEL_NO_CANTRIPS = BARD_PER_DAY.map((row) => (row ? [null, ...row.slice(1)] : row));
+
+// Bloodrager / four-level spontaneous casters (Advanced Class Guide): spells per day and known.
+const BLOODRAGER_PER_DAY = [
+  null,
+  r(N), r(N), r(N), r(N, 1), r(N, 1), r(N, 1), r(N, 1, 1), r(N, 1, 1), r(N, 2, 1), r(N, 2, 1, 1),
+  r(N, 2, 1, 1), r(N, 2, 2, 1), r(N, 3, 2, 1, 1), r(N, 3, 2, 1, 1), r(N, 3, 2, 2, 1), r(N, 3, 3, 2, 1),
+  r(N, 4, 3, 2, 1), r(N, 4, 3, 2, 2), r(N, 4, 3, 3, 2), r(N, 4, 4, 3, 2),
+];
+const BLOODRAGER_KNOWN = [
+  null,
+  r(N), r(N), r(N), r(N, 2), r(N, 3), r(N, 4), r(N, 4, 2), r(N, 4, 3), r(N, 5, 4), r(N, 5, 4, 2),
+  r(N, 5, 4, 3), r(N, 6, 5, 4), r(N, 6, 5, 4, 2), r(N, 6, 5, 4, 3), r(N, 6, 6, 5, 4), r(N, 6, 6, 5, 4),
+  r(N, 6, 6, 5, 4), r(N, 6, 6, 6, 5), r(N, 6, 6, 6, 5), r(N, 6, 6, 6, 5),
+];
+
+// Arcanist (Advanced Class Guide): spells per day and prepared (known) per day.
+const ARCANIST_PER_DAY = [
+  null,
+  r(I, 2), r(I, 3), r(I, 4), r(I, 4, 2), r(I, 4, 3), r(I, 4, 4, 2), r(I, 4, 4, 3), r(I, 4, 4, 4, 2), r(I, 4, 4, 4, 3),
+  r(I, 4, 4, 4, 4, 2), r(I, 4, 4, 4, 4, 3), r(I, 4, 4, 4, 4, 4, 2), r(I, 4, 4, 4, 4, 4, 3), r(I, 4, 4, 4, 4, 4, 4, 2), r(I, 4, 4, 4, 4, 4, 4, 3),
+  r(I, 4, 4, 4, 4, 4, 4, 4, 2), r(I, 4, 4, 4, 4, 4, 4, 4, 3), r(I, 4, 4, 4, 4, 4, 4, 4, 4, 2), r(I, 4, 4, 4, 4, 4, 4, 4, 4, 3), r(I, 4, 4, 4, 4, 4, 4, 4, 4, 4),
+];
+const ARCANIST_PREPARED = [
+  null,
+  r(4, 2), r(5, 2), r(5, 3), r(6, 3, 1), r(6, 4, 2), r(7, 4, 2, 1), r(7, 5, 3, 2), r(8, 5, 3, 2, 1), r(8, 5, 4, 3, 2),
+  r(9, 5, 4, 3, 2, 1), r(9, 5, 5, 4, 3, 2), r(9, 5, 5, 4, 3, 2, 1), r(9, 5, 5, 4, 4, 3, 2), r(9, 5, 5, 4, 4, 3, 2, 1), r(9, 5, 5, 4, 4, 4, 3, 2),
+  r(9, 5, 5, 4, 4, 4, 3, 2, 1), r(9, 5, 5, 4, 4, 4, 3, 3, 2), r(9, 5, 5, 4, 4, 4, 3, 3, 2, 1), r(9, 5, 5, 4, 4, 4, 3, 3, 3, 2), r(9, 5, 5, 4, 4, 4, 3, 3, 3, 3),
+];
+
+module.exports = { FULL_PREPARED, SORCERER_PER_DAY, SORCERER_KNOWN, BARD_PER_DAY, BARD_KNOWN, HALF_CASTER, MAGUS_PER_DAY, SIX_LEVEL_NO_CANTRIPS, BLOODRAGER_PER_DAY, BLOODRAGER_KNOWN, ARCANIST_PER_DAY, ARCANIST_PREPARED };

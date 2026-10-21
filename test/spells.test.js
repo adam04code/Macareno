@@ -25,10 +25,12 @@ test('every spell has valid metadata and resolves without throwing', () => {
 
 test('core spell lists are complete', () => {
   const count = (list) => Array.from({ length: 10 }, (_, l) => spellList(list, l).length);
-  const druid = count('druid');
-  assert.deepEqual(druid, [13, 20, 26, 22, 17, 19, 18, 13, 11, 10]);
-  assert.deepEqual(count('paladin').slice(1, 5), [16, 9, 11, 9]);
-  assert.deepEqual(count('ranger').slice(1, 5), [19, 12, 13, 7]);
-  assert.equal(count('cleric')[9], 11);
+  const atLeast = (actual, min, label) => min.forEach((n, i) => assert.ok(actual[i] >= n, `${label} level ${i}: ${actual[i]} < ${n}`));
+  // Core Rulebook list sizes (expansion spells only add to them).
+  atLeast(count('druid'), [13, 20, 26, 22, 17, 19, 18, 13, 11, 10], 'druid');
+  atLeast(count('paladin').slice(1, 5), [16, 9, 11, 9], 'paladin');
+  atLeast(count('ranger').slice(1, 5), [19, 12, 13, 7], 'ranger');
+  atLeast(count('cleric'), [12, 31, 32, 34, 27, 28, 26, 18, 17, 11], 'cleric');
   assert.ok(count('wizard').every((n) => n >= 19));
+  for (const list of ['alchemist', 'inquisitor', 'witch']) assert.ok(count(list).slice(1).some((n) => n > 10), list);
 });

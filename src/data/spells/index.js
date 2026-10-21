@@ -5,10 +5,11 @@ const { SPELLS: MID } = require('./mid');
 const { SPELLS: HIGH } = require('./high');
 const { SPELLS: CORE_LOW } = require('./coreLow');
 const { SPELLS: CORE_HIGH } = require('./coreHigh');
+const { SPELLS: EXPANDED } = require('./expanded');
 const { CLASS_LISTS } = require('./classLists');
 
 const SPELLS = {};
-for (const group of [LOW, MID, HIGH, CORE_LOW, CORE_HIGH]) {
+for (const group of [LOW, MID, HIGH, CORE_LOW, CORE_HIGH, EXPANDED]) {
   for (const [id, s] of Object.entries(group)) {
     if (SPELLS[id]) throw new Error(`Duplicate spell id ${id}`);
     SPELLS[id] = s;

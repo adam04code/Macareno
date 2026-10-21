@@ -216,6 +216,8 @@ const FEATS = {
   'fast-learner': F('Fast Learner', ['general'], {}, '+1 hp or skill rank each level in addition to the favored class bonus.'),
 };
 
+Object.assign(FEATS, require('./featsApg').FEATS);
+
 // Monk bonus feat lists by level.
 const MONK_BONUS_FEATS = {
   1: ['catch-off-guard', 'combat-reflexes', 'deflect-arrows', 'dodge', 'improved-grapple', 'scorpion-style', 'throw-anything'],

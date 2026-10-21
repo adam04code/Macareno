@@ -308,4 +308,6 @@ const FEATURES = {
 
 };
 
+Object.assign(FEATURES, require('./featuresApg').FEATURES);
+
 module.exports = { FEATURES };

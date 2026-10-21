@@ -146,7 +146,14 @@ class Character extends Creature {
       const def = FEATURES[f.key];
       if (def && def.grantsFeats) def.grantsFeats.forEach((id) => add(id, `class:${f.key}`));
     }
-    for (const opt of this.selectedOptions()) if (opt.def.grantsFeats) opt.def.grantsFeats.forEach((id) => add(id, `option:${opt.id}`));
+    for (const opt of this.selectedOptions()) {
+      if (opt.def.grantsFeats) opt.def.grantsFeats.forEach((id) => add(id, `option:${opt.id}`));
+      if (opt.def.grantsFeatsAt) {
+        const g = OPTIONS.OPTION_GROUPS[opt.group];
+        const lvl = g && g.levelProg ? this.prog(g.levelProg) : this.hitDice();
+        for (const [at, ids] of Object.entries(opt.def.grantsFeatsAt)) if (lvl >= Number(at)) ids.forEach((id) => add(id, `option:${opt.id}`));
+      }
+    }
     this._cache = this._cache || {};
     this._cache.feats = out;
     return out;
@@ -360,6 +367,13 @@ class Character extends Creature {
     return Math.max(best, this.flagValue('fortification') || 0);
   }
 
+  /** Start-of-turn fast healing from class features and options (judgment of healing, grand discoveries). */
+  naturalHealing() {
+    const fh = this.flagValue('fastHealing');
+    if (!fh || !this.isAlive() || this.hp.current >= this.maxHp()) return [];
+    return [{ type: 'fast-healing', healed: this.heal(fh) }];
+  }
+
   // ------------------------------------------------------------ class math
   bab() {
     if (this.hasFlag('babEqualsLevel')) return this.hitDice();
@@ -437,7 +451,7 @@ class Character extends Creature {
     if (!def) throw Object.assign(new Error(`Unknown skill: ${id}`), { status: 400 });
     const ranks = this.skillRanks(id);
     const classBonus = ranks > 0 && this.isClassSkill(id) ? 3 : 0;
-    const ab = this.abilityMod(def.ability);
+    const ab = def.knowledge && this.hasFlag('knowledgeUsesCha') ? Math.max(this.abilityMod('int'), this.abilityMod('cha')) : this.abilityMod(def.ability);
     let acp = 0;
     if (def.acp) acp = this.armorCheckPenalty();
     const sizeMod = id === 'stealth' ? SIZES[this.size()].stealth : id === 'fly' ? SIZES[this.size()].fly : 0;
@@ -519,6 +533,13 @@ class Character extends Creature {
       const def = FEATURES[f.key];
       if (def && def.proficiencies) (def.proficiencies.armor || []).forEach((a) => armor.add(a));
     }
+    for (const opt of this.selectedOptions()) {
+      const p = opt.def.proficiencies;
+      if (!p) continue;
+      (p.weapons || []).forEach((w) => weapons.add(w));
+      (p.armor || []).forEach((a) => armor.add(a));
+      (p.shields || []).forEach((x) => shields.add(x));
+    }
     if (this.hasFeat('armor-proficiency-light')) armor.add('light');
     if (this.hasFeat('armor-proficiency-medium')) armor.add('medium');
     if (this.hasFeat('armor-proficiency-heavy')) armor.add('heavy');
@@ -532,10 +553,7 @@ class Character extends Creature {
       weapons.add('simple');
       weapons.add('martial');
     }
-    if (this.classLevel('cleric') && this.deity) {
-      const { DEITIES } = OPTIONS;
-      if (DEITIES[this.deity]) weapons.add(DEITIES[this.deity].favoredWeapon);
-    }
+    if (this.deity && weapons.has('deity-favored') && OPTIONS.DEITIES[this.deity]) weapons.add(OPTIONS.DEITIES[this.deity].favoredWeapon);
     const out = { weapons, armor, shields };
     this._cache = this._cache || {};
     this._cache.prof = out;

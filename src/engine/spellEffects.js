@@ -95,7 +95,7 @@ function touchAttack(caster, target, kind, rng, bonusExtra = 0) {
   const bonus = bab + ab + sizeMod + mods + bonusExtra;
   const touch = kind !== 'ranged';
   const ac = target.ac({ touch, tags: [ranged ? 'vsRanged' : 'vsMelee', ...caster.targetTags()] }).total;
-  const roll = rng.die(20);
+  const roll = checks.creatureD20(caster, rng);
   const hit = roll === 20 || (roll !== 1 && roll + bonus >= ac);
   let crit = false;
   if (roll === 20 && !target.isImmune(['critical'])) {
