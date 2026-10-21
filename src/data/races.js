@@ -60,7 +60,7 @@ const RACES = {
       mod('skill.perception', 2, 'racial', `${s} keen senses`),
       mod('skill.craft', 2, 'racial', `${s} obsessive`),
     ],
-    flags: ['lowlight'], spellLikeAbilities: [{ spell: 'dancing-lights', perDay: 1, minCha: 11 }, { spell: 'ghost-sound', perDay: 1, minCha: 11 }, { spell: 'prestidigitation', perDay: 1, minCha: 11 }],
+    flags: ['lowlight'], spellLikeAbilities: [{ spell: 'dancing-lights', perDay: 1, minCha: 11 }, { spell: 'ghost-sound', perDay: 1, minCha: 11 }, { spell: 'prestidigitation', perDay: 1, minCha: 11 }, { spell: 'speak-with-animals', perDay: 1, minCha: 11 }],
   },
   'half-elf': {
     name: 'Half-Elf', type: 'humanoid', subtypes: ['elf', 'human'], size: 'medium', speed: 30,

@@ -67,7 +67,14 @@ function matchesOnlyVs(target, list) {
     if (t === 'good') return target.axes().good;
     if (t === 'crystalline') return (target.subtypes() || []).includes('crystalline') || target.creatureType() === 'construct';
     if (t === 'evil-outsider') return target.creatureType() === 'outsider' && target.axes().evil;
-    return target.creatureType() === t;
+    if (t === 'nonchaotic') return !target.axes().chaotic;
+    if (t === 'nonlawful') return !target.axes().lawful;
+    if (t === 'nongood') return !target.axes().good;
+    if (t === 'nonevil') return !target.axes().evil;
+    if (t === 'lawful') return target.axes().lawful;
+    if (t === 'chaotic') return target.axes().chaotic;
+    if (t === 'neutral') return target.axes().neutralEthic || target.axes().neutralMoral;
+    return target.creatureType() === t || (target.subtypes() || []).includes(t);
   });
 }
 
@@ -142,7 +149,7 @@ const HANDLERS = {
     const perHit = eff.attack || eff.autoHit || eff.perMissile;
     // Missiles/rays: distribute `count` hits across targets in order (wrapping).
     const assignments = perHit ? Array.from({ length: count }, (_, i) => targets[i % targets.length]) : targets;
-    const intense = caster.hasFlag && caster.hasFlag('intenseSpells') && spell.school === 'evocation' ? Math.max(1, Math.floor(caster.classLevel('wizard') / 2)) : 0;
+    const intense = caster.hasFlag && caster.hasFlag('intenseSpells') && spell.school === 'evocation' ? Math.max(1, Math.floor(caster.prog('wizardSchoolLevel') / 2)) : 0;
     let intenseUsed = false;
     const srCache = new Map();
     for (const target of assignments) {
@@ -558,9 +565,10 @@ const HANDLERS = {
   },
 
   summon(ctx, eff) {
-    const { SUMMON_TABLES } = require('../data/spells');
+    const { SUMMON_TABLES: SM, NATURE_SUMMON_TABLES } = require('../data/spells');
     const { BESTIARY } = require('../data/bestiary');
     const { Monster } = require('./monster');
+    const SUMMON_TABLES = Object.fromEntries(Object.entries(eff.tables === 'nature' ? NATURE_SUMMON_TABLES : SM).map(([k, ids]) => [k, ids.filter((x) => BESTIARY[x])]));
     const table = SUMMON_TABLES[eff.table] || [];
     const lower = Object.entries(SUMMON_TABLES).filter(([lvl]) => Number(lvl) < eff.table).flatMap(([, ids]) => ids);
     let id = ctx.options.creature;
@@ -885,8 +893,8 @@ const HANDLERS = {
       r.attack = atk;
       if (!atk.hit) {
         r.note = 'missed';
-      } else if (target.isImmune(['poison'])) r.note = 'immune';
-      else r.affliction = applyAffliction(target, { kind: 'poison', name: spell.name, save: eff.poison.save, dc, damage: eff.poison.damage, frequency: eff.poison.frequency, cure: eff.poison.cure }, rng);
+      } else if (target.isImmune([eff.disease ? 'disease' : 'poison'])) r.note = 'immune';
+      else r.affliction = applyAffliction(target, { kind: eff.disease ? 'disease' : 'poison', name: spell.name, save: eff.poison.save, dc, damage: eff.poison.damage, frequency: eff.poison.frequency, cure: eff.poison.cure }, rng);
       results.push(r);
     }
     return { results };
