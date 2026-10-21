@@ -32,8 +32,9 @@ const CLASS_KITS = {
   paladin: [['longsword'], ['scale-mail'], ['heavy-steel-shield'], ['holy-symbol-wooden'], ['backpack']],
   ranger: [['longbow'], ['arrows', 40], ['short-sword'], ['leather'], ['backpack'], ['bedroll']],
   magus: [['scimitar'], ['studded-leather'], ['spell-component-pouch'], ['spellbook'], ['backpack']],
+  druid: [['scimitar'], ['hide'], ['heavy-wooden-shield'], ['sling'], ['spell-component-pouch'], ['backpack']],
 };
-const KIT_EQUIP = { fighter: ['longsword', 'heavy-wooden-shield', 'scale-mail'], barbarian: ['greataxe', 'hide'], rogue: ['rapier', 'leather'], wizard: ['quarterstaff'], sorcerer: ['spear'], cleric: ['heavy-mace', 'scale-mail', 'heavy-wooden-shield'], bard: ['rapier', 'leather'], monk: [], paladin: ['longsword', 'scale-mail', 'heavy-steel-shield'], ranger: ['longbow', 'leather'], magus: ['scimitar', 'studded-leather'] };
+const KIT_EQUIP = { fighter: ['longsword', 'heavy-wooden-shield', 'scale-mail'], barbarian: ['greataxe', 'hide'], rogue: ['rapier', 'leather'], wizard: ['quarterstaff'], sorcerer: ['spear'], cleric: ['heavy-mace', 'scale-mail', 'heavy-wooden-shield'], bard: ['rapier', 'leather'], monk: [], paladin: ['longsword', 'scale-mail', 'heavy-steel-shield'], ranger: ['longbow', 'leather'], magus: ['scimitar', 'studded-leather'], druid: ['scimitar', 'hide', 'heavy-wooden-shield'] };
 
 // ---------------------------------------------------------------- abilities
 function pointBuyCost(scores) {
@@ -335,6 +336,7 @@ function applyClassChoices(char, classId, classLevel, choices = {}, featPicks = 
           }
           errors.push(...alignmentDomainErrors(char, d));
           char.choices.domains = d;
+          for (const x of d) if (OPTIONS.DOMAINS[x] && OPTIONS.DOMAINS[x].onPick) errors.push(...OPTIONS.DOMAINS[x].onPick(char, choices));
         }
         break;
       }
@@ -494,7 +496,7 @@ function createCharacter(spec, opts = {}) {
   const pool = race.bonusLanguages === 'any' ? LANGUAGES.filter((l) => l !== 'Druidic') : race.bonusLanguages;
   if (extraLangs.length > bonusCount) errors.push(`Too many bonus languages (${extraLangs.length}/${bonusCount})`);
   for (const l of extraLangs) if (!pool.includes(l)) errors.push(`${l} is not an available bonus language`);
-  char.languages = [...race.languages, ...extraLangs];
+  char.languages = [...new Set([...race.languages, ...(cdef.startingLanguages || []), ...extraLangs])];
   if (classId === 'cleric' || classId === 'wizard') {
     // Clerics may learn Abyssal/Celestial/Infernal; wizards Draconic as bonus languages.
   }

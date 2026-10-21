@@ -14,7 +14,7 @@ const dice = require('./dice');
  */
 class Monster extends Creature {
   constructor(data = {}, opts = {}) {
-    const def = BESTIARY[data.templateId];
+    const def = opts.def || BESTIARY[data.templateId];
     if (!def) throw Object.assign(new Error(`Unknown creature: ${data.templateId}`), { status: 400 });
     super({ name: def.name, alignment: def.alignment, ...data });
     this.kind = 'monster';

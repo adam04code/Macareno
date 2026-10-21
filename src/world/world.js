@@ -4,6 +4,7 @@ const { EventEmitter } = require('events');
 const { Character } = require('../engine/character');
 const { Monster } = require('../engine/monster');
 const { Encounter } = require('../engine/combat');
+const { companionFor, saveCompanion } = require('../engine/companion');
 const { defaultRng } = require('../engine/rng');
 const dice = require('../engine/dice');
 const checks = require('../engine/checks');
@@ -358,6 +359,7 @@ class World extends EventEmitter {
     enc.onEvent((e) => this.onEncounterEvent(enc, e));
     const party = this.partyMembersInRoom(initiator, room.id);
     party.forEach((c, i) => enc.add(c, opts.pvp ? `pvp:${initiator.id}` : 'players', { position: { x: i * 2, y: 0 }, controller: this.online.has(c.id) ? 'player' : 'ai' }));
+    party.forEach((c, i) => this.addCompanion(enc, c, opts.pvp ? `pvp:${initiator.id}` : 'players', { x: i * 2 + 1, y: 0 }));
     monsters.forEach((m, i) => enc.add(m, opts.pvp ? `pvp:${m.id}` : 'monsters', { position: { x: i * 2, y: (m.def ? 4 : 4) + (i % 2) }, controller: m.kind === 'character' && this.online.has(m.id) ? 'player' : 'ai' }));
     // Surprise: an unnoticed party gets the first strike; monsters start flat-footed.
     const s = this.online.get(initiator.id);
@@ -371,9 +373,21 @@ class World extends EventEmitter {
     return enc;
   }
 
+  /** Animal companions (and cavalier mounts) fight beside their owner, controlled by the AI. */
+  addCompanion(enc, char, side, position) {
+    if (char.kind !== 'character' || !char.companion || char.companion.status === 'dead') return null;
+    const comp = companionFor(char);
+    if (!comp || !comp.isAlive()) return null;
+    enc.add(comp, side, { position, controller: 'ai' });
+    enc.companions = enc.companions || new Map();
+    enc.companions.set(comp.id, char.id);
+    return comp;
+  }
+
   joinEncounter(char, enc, side) {
     if (enc.combatants.has(char.id)) return;
     enc.add(char, side, { position: { x: enc.combatants.size, y: 0 }, controller: 'player' });
+    this.addCompanion(enc, char, side, { x: enc.combatants.size, y: 0 });
     this.send(char.id, { type: 'combat', text: 'You join the battle!', data: enc.snapshot(char.id) });
   }
 
@@ -431,6 +445,14 @@ class World extends EventEmitter {
     const loot = [];
     for (const c of enc.combatants.values()) {
       const cr = c.creature;
+      if (cr.isCompanion) {
+        const owner = this.characters.get(enc.companions && enc.companions.get(cr.id));
+        if (owner) {
+          saveCompanion(owner, cr);
+          this.markDirty(owner);
+        }
+        continue;
+      }
       if (cr.kind === 'monster') {
         if (!cr.isAlive() || ['dying', 'stable', 'unconscious'].includes(cr.hpState()) || cr.hasFlag('petrified')) {
           if (!cr.summoned && room && room.monsters.has(cr.id)) {
@@ -836,6 +858,15 @@ class World extends EventEmitter {
     for (let i = 0; i < 1; i++) tickAfflictions(char, this.rng, 'day');
     spellcasting.restoreSlots(char);
     char.restoreResources();
+    // Companions heal like their owner; a slain companion is replaced after a day of rest and prayer.
+    if (char.companion) {
+      const comp = companionFor(char);
+      if (char.companion.status === 'dead') char.companion = { ...char.companion, id: undefined, hp: null, status: 'alive', effects: [] };
+      else if (comp) {
+        comp.heal(comp.hitDice() * (bed ? 2 : 1));
+        saveCompanion(char, comp);
+      }
+    }
     char.touch();
     this.markDirty(char);
     this.send(charId, { type: 'rest', text: `You wake refreshed: +${healed} hp, spells and daily abilities restored.` });

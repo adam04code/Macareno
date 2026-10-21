@@ -157,7 +157,10 @@ test('all base classes level to 20', () => {
     paladin: { alignment: 'LG', scores: { str: 16, dex: 10, con: 14, int: 10, wis: 10, cha: 14 } },
     ranger: { scores: ARRAYS.dex, racialBonus: 'dex', choices: { 'favored-enemy': 'humanoid:orc' } },
     magus: { scores: { str: 16, dex: 12, con: 12, int: 15, wis: 10, cha: 8 }, racialBonus: 'int', spells: { spellbook: ['shocking-grasp', 'magic-missile', 'shield', 'frostbite', 'true-strike', 'grease'] } },
+    druid: { scores: ARRAYS.wis, racialBonus: 'wis', choices: { 'nature-bond': 'animal-companion', companion: 'wolf' } },
   };
+  const { BASE_CLASSES } = require('../src/data/classes');
+  for (const id of Object.keys(BASE_CLASSES)) assert.ok(setups[id], `level-20 test setup missing for ${id}`);
   for (const [cls, extra] of Object.entries(setups)) {
     const c = make({ name: `${cls[0].toUpperCase()}${cls.slice(1)} Test`, class: cls, feats: [{ id: 'toughness' }, { id: 'iron-will' }], ...extra });
     levelTo(c, cls, 19);

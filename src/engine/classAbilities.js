@@ -542,6 +542,67 @@ const ABILITIES = {
     },
   },
 
+  'artificers-touch': {
+    name: "Artificer's Touch", action: 'standard', target: 'enemy', resource: (u, id) => `power:${id}`, perDay: usesPerDay('wis'),
+    use({ user, target, rng }) {
+      const atk = touchAttack(user, target, 'meleeTouch', rng);
+      if (!atk.hit) return { target: target.id, attack: atk, note: 'missed' };
+      if (target.creatureType() !== 'construct') return { target: target.id, attack: atk, note: 'only harms objects and constructs' };
+      const res = applyDamage(target, [{ amount: dice.total(`1d6+${half(domainLvl(user))}`, rng) * (atk.crit ? 2 : 1), type: 'untyped' }]);
+      return { target: target.id, attack: atk, damage: res.total, state: res.state };
+    },
+  },
+  'dazing-touch-domain': touchCondition('Dazing Touch', { condition: 'dazed', rounds: 1, hdCheck: (u, t) => t.hitDice() <= domainLvl(u) }),
+  'calming-touch': {
+    name: 'Calming Touch', action: 'standard', target: 'ally', resource: (u, id) => `power:${id}`, perDay: usesPerDay('wis'),
+    use({ user, target, rng }) {
+      const t = target || user;
+      const amt = dice.total(`1d6+${domainLvl(user)}`, rng);
+      t.hp.nonlethal = Math.max(0, (t.hp.nonlethal || 0) - amt);
+      const removed = t.removeConditions(['fatigued', 'shaken', 'sickened']).map((e) => e.name);
+      t.touch();
+      return { target: t.id, nonlethalHealed: amt, removed };
+    },
+  },
+  'touch-of-darkness': {
+    name: 'Touch of Darkness', action: 'standard', target: 'enemy', resource: (u, id) => `power:${id}`, perDay: usesPerDay('wis'),
+    use({ user, target, rng }) {
+      const atk = touchAttack(user, target, 'meleeTouch', rng);
+      if (!atk.hit) return { target: target.id, attack: atk, note: 'missed' };
+      target.addEffect(makeEffect({ key: 'power:touch-of-darkness', name: 'Touch of Darkness', remaining: Math.max(1, half(domainLvl(user))), flags: ['attackMissChance:20'] }));
+      return { target: target.id, attack: atk, rounds: Math.max(1, half(domainLvl(user))) };
+    },
+  },
+  liberation: {
+    name: 'Liberation', action: 'free', target: 'self',
+    use({ user, options }) {
+      const max = domainLvl(user);
+      const rounds = Math.min(options.rounds || max, max - (user.resourcesUsed.liberation || 0));
+      if (rounds < 1) throw err('No liberation rounds remaining');
+      user.resourcesUsed.liberation = (user.resourcesUsed.liberation || 0) + rounds;
+      user.removeConditions(['paralyzed', 'grappled', 'pinned', 'entangled']);
+      user.addEffect(makeEffect({ key: 'power:liberation', name: 'Liberation', remaining: rounds, flags: ['freedomOfMovement', 'immune:paralysis'] }));
+      return { rounds };
+    },
+  },
+  'vision-of-madness': touchBuff('Vision of Madness', { rounds: 3, modifiers: (u, n) => { const b = Math.max(1, half(domainLvl(u))); return [mod('attack', b, 'untyped', n), mod('save', -b, 'untyped', n)]; } }),
+  'inspiring-word': touchBuff('Inspiring Word', { rounds: 1, modifiers: (u, n) => [mod('attack', 2, 'morale', n), mod('skill', 2, 'morale', n), mod('abilityCheck', 2, 'morale', n), mod('save', 2, 'morale', n)] }),
+  'wooden-fist': {
+    name: 'Wooden Fist', action: 'free', target: 'self', resource: (u, id) => `power:${id}`, perDay: usesPerDay('wis'),
+    use({ user }) {
+      const b = Math.max(1, half(domainLvl(user)));
+      user.addEffect(makeEffect({ key: 'power:wooden-fist', name: 'Wooden Fist', remaining: 3 + Math.max(0, user.abilityMod('wis')), flags: ['unarmedNoProvoke'], modifiers: [mod('damage', b, 'untyped', 'Wooden fist', ['unarmed'])] }));
+      return { bonus: b };
+    },
+  },
+  'gentle-rest': touchCondition('Gentle Rest', { condition: 'staggered', rounds: (u) => 1 }),
+  'blast-rune': rangedTouchPower('Blast Rune', { diceFn: (u) => `1d6+${half(domainLvl(u))}`, energy: 'fire', attack: 'meleeTouch' }),
+  'storm-burst': rangedTouchPower('Storm Burst', {
+    diceFn: (u) => `1d6+${half(domainLvl(u))}`, energy: 'untyped',
+    after: (ctx) => ctx.target.addEffect(makeEffect({ key: 'power:storm-burst', name: 'Storm Burst', remaining: 1, modifiers: [mod('attack', -2, 'untyped', 'Storm burst')] })),
+  }),
+  'acidic-ray': rangedTouchPower('Acidic Ray', { diceFn: (u) => `${1 + half(bloodLvl(u))}d6`, energy: 'acid', ability: 'cha' }),
+
   // ------------------------------------------------------------ Ranger
   quarry: {
     name: 'Quarry', action: 'standard', target: 'enemy',
@@ -616,6 +677,40 @@ const ABILITIES = {
       spend(user, 'spellSynthesis');
       user.addEffect(makeEffect({ key: 'ability:spell-synthesis', name: 'Spell Synthesis', remaining: 1, flags: ['spellSynthesis'], modifiers: [mod('srCheck', 2, 'untyped', 'Spell synthesis')] }));
       return {};
+    },
+  },
+
+  // ------------------------------------------------------------ Druid
+  'wild-shape': {
+    name: 'Wild Shape', action: 'standard', target: 'self',
+    use({ user, options }) {
+      const { resolveForm, FORMS, wildShapeTiers } = require('../data/wildShape');
+      const { SIZE_ORDER } = require('../data/core');
+      const level = user.prog('wildShapeLevel') || user.classLevel('druid');
+      const r = resolveForm(options.form, level);
+      if (!r) throw err(`Choose an available form (options.form): ${Object.keys(FORMS).filter((id) => resolveForm(id, level)).join(', ')} (tiers: ${wildShapeTiers(level).join(', ')})`);
+      spend(user, 'wildShape');
+      user.removeEffectsWhere((e) => e.key === 'ability:wild-shape');
+      const steps = SIZE_ORDER.indexOf(r.size) - SIZE_ORDER.indexOf(user.baseSize());
+      const mods = Object.entries(r.adj).filter(([k]) => k !== 'natural').map(([a, v]) => mod(a, v, 'size', `Wild shape (${r.form.name})`));
+      if (r.adj.natural) mods.push(mod('ac', r.adj.natural, 'natural', `Wild shape (${r.form.name})`));
+      const flags = ['polymorphed', 'wildShape', ...(user.hasFeat('natural-spell') ? [] : ['noCast']), ...(r.form.flags || [])];
+      if (r.form.fly) flags.push(`fly:${r.form.fly}`);
+      if (r.form.speed) flags.push(`landSpeed:${r.form.speed}`);
+      const rounds = 600 * level;
+      user.addEffect(makeEffect({
+        key: 'ability:wild-shape', name: `Wild Shape (${r.form.name})`, kind: 'ability', remaining: rounds, sizeChange: steps, modifiers: mods, flags,
+        naturalAttacks: r.form.attacks.map((a) => ({ ...a, fixedSize: true, magic: level >= 4 })), resist: r.form.resist, data: { form: r.form.id, tier: r.tier },
+      }));
+      return { form: r.form.id, tier: r.tier, size: r.size, rounds };
+    },
+  },
+  'end-wild-shape': {
+    name: 'Return to Normal Form', action: 'standard', target: 'self',
+    use({ user }) {
+      const n = user.removeEffectsWhere((e) => e.key === 'ability:wild-shape').length;
+      if (!n) throw err('Not in wild shape');
+      return { ended: true };
     },
   },
 

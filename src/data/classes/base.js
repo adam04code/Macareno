@@ -3,8 +3,9 @@
 const T = require('./spellTables');
 
 /**
- * Base classes: the 10 Core Rulebook classes (minus druid) plus the magus
- * (Ultimate Magic). Feature keys refer to src/data/features.js.
+ * Base classes: the 11 Core Rulebook classes plus the magus (Ultimate Magic).
+ * Classes from later books live in hybrid.js / advanced.js. Feature keys refer
+ * to src/data/features.js.
  *
  * progressions: values summed across every class a character has (so a
  * rogue/assassin adds both classes' sneak attack dice, etc.).
@@ -61,6 +62,23 @@ const CLASSES = {
     features: { 1: ['aura', 'channel-energy', 'domains', 'orisons', 'spontaneous-casting'] },
     progressions: { channelDice: odd, channelUses: () => 3, domainLevel: (l) => l },
     choices: { domains: { list: 'domains', count: 2 } },
+  },
+
+  druid: {
+    name: 'Druid', type: 'base', hitDie: 8, skillRanks: 4, bab: 'threeQuarter', saves: { fort: 'good', ref: 'poor', will: 'good' },
+    alignment: (al) => al === 'N' || al[0] === 'N' || al[1] === 'N', alignmentText: 'Any neutral',
+    classSkills: ['climb', 'craft', 'fly', 'handle-animal', 'heal', 'knowledge-geography', 'knowledge-nature', 'perception', 'profession', 'ride', 'spellcraft', 'survival', 'swim'],
+    proficiencies: { weapons: ['club', 'dagger', 'dart', 'quarterstaff', 'scimitar', 'scythe', 'sickle', 'shortspear', 'sling', 'spear'], armor: ['light', 'medium'], shields: ['shield'] },
+    armorRestriction: 'nonmetal',
+    spellcasting: { tradition: 'divine', style: 'prepared', ability: 'wis', list: 'druid', perDay: T.FULL_PREPARED, knowsWholeList: true, domainSlots: 'druid-domain', spontaneous: 'summon-natures-ally' },
+    features: {
+      1: ['nature-bond', 'nature-sense', 'orisons', 'wild-empathy-druid', 'spontaneous-summoning'], 2: ['woodland-stride'], 3: ['trackless-step'],
+      4: ['resist-natures-lure', 'wild-shape'], 9: ['venom-immunity'], 13: ['a-thousand-faces'], 15: ['timeless-body-druid'],
+    },
+    progressions: {
+      druidLevel: (l) => l, wildShapeUses: (l) => (l >= 20 ? Infinity : l >= 4 ? Math.floor((l - 2) / 2) : 0),
+    },
+    startingLanguages: ['Druidic'],
   },
 
   fighter: {

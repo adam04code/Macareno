@@ -13,6 +13,7 @@ const raging = (c) => c.hasFlag('raging');
 const RAGE_POWERS = {
   'animal-fury': o('Animal Fury', 'While raging, gain a bite attack (1d4 Medium) as a secondary natural attack.', { naturalAttacks: (c) => (raging(c) ? [{ name: 'Bite (animal fury)', damage: '1d4', type: ['bludgeoning', 'piercing', 'slashing'], primary: false }] : []) }),
   'clear-mind': o('Clear Mind', 'Once per rage, reroll a failed Will save.', { minLevel: 8 }),
+  'fearless-rage': o('Fearless Rage', 'While raging, immune to the shaken and frightened conditions.', { minLevel: 12, immunitiesWhile: 'raging', flags: (c) => (raging(c) ? ['immune:shaken', 'immune:frightened'] : []) }),
   'guarded-stance': o('Guarded Stance', 'While raging, +1 dodge AC vs melee (+1 per six levels) for a number of rounds = Con mod.', { modifiers: (c) => (raging(c) ? [mod('ac', 1 + Math.floor(c.classLevel('barbarian') / 6), 'dodge', 'Guarded stance', ['vsMelee'])] : []) }),
   'increased-damage-reduction': o('Increased Damage Reduction', 'DR/— increases by 1 while raging.', { minLevel: 8, dr: (c) => (raging(c) ? [{ amount: 1, bypass: '-' }] : []) }),
   'intimidating-glare': o('Intimidating Glare', 'Move action while raging: Intimidate to demoralize an adjacent foe.'),
@@ -53,6 +54,7 @@ const ROGUE_TALENTS = {
   resiliency: o('Resiliency', 'Once per day, gain temporary hp equal to rogue level when reduced below 0 hp.'),
   'rogue-crawl': o('Rogue Crawl', 'Crawl at half speed (5-ft. step while prone) without provoking.'),
   'slow-reactions': o('Slow Reactions', 'Opponents damaged by sneak attack cannot make attacks of opportunity for 1 round.', { flags: () => ['slowReactions'] }),
+  'stand-up': o('Stand Up', 'Stand up from prone as a free action (still provokes).'),
   'snipers-eye': o("Sniper's Eye", 'Deal sneak attack with ranged attacks against targets with concealment.'),
   'surprise-attack': o('Surprise Attack', 'During the surprise round, opponents are always considered flat-footed to the rogue.'),
   'trap-spotter': o('Trap Spotter', 'Automatic Perception check when within 10 ft. of a trap.'),
@@ -64,6 +66,7 @@ const ROGUE_TALENTS = {
   opportunist: o('Opportunist', 'Once per round, AoO against a foe just struck in melee by another character.', { advanced: true }),
   'skill-mastery': o('Skill Mastery', 'Take 10 on 3 + Int mod chosen skills even under stress.', { advanced: true }),
   'slippery-mind': o('Slippery Mind', 'Second save one round after failing vs enchantment.', { advanced: true }),
+  'dispelling-attack': o('Dispelling Attack', 'Sneak attacks also act as a targeted dispel magic (caster level = rogue level) against the highest-level spell on the target.', { advanced: true, requires: ['major-magic'], flags: () => ['dispellingAttack'] }),
   'feat-talent': o('Feat', 'Gain any feat in place of a rogue talent.', { advanced: true, bonusFeat: 'any' }),
 };
 
@@ -71,6 +74,44 @@ const DOMAINS = {
   air: o('Air', 'Lightning Arc (1st: ranged touch 30 ft., 1d6 + 1 per two cleric levels electricity, 3 + Wis/day); Electricity Resistance 10 (6th), 20 (12th), immune (20th).', {
     spells: ['obscuring-mist', 'wind-wall', 'gaseous-form', 'air-walk', 'control-winds', 'chain-lightning', 'elemental-body-iv', 'whirlwind', 'elemental-swarm'],
     abilities: ['lightning-arc'], resistances: (c) => (c.prog('domainLevel') >= 20 ? { electricity: Infinity } : c.prog('domainLevel') >= 12 ? { electricity: 20 } : c.prog('domainLevel') >= 6 ? { electricity: 10 } : {}),
+  }),
+  animal: o('Animal', 'Speak with animals 3 + cleric level rounds/day; animal companion at 4th (effective druid level = cleric level - 3). Knowledge (nature) is a class skill.', {
+    spells: ['calm-animals', 'hold-animal', 'dominate-animal', 'summon-natures-ally-iv', 'beast-shape-iii', 'antilife-shell', 'animal-shapes', 'summon-natures-ally-viii', 'shapechange'],
+    classSkills: ['knowledge-nature'], progressions: { companionLevel: (c) => (c.prog('domainLevel') >= 4 ? c.prog('domainLevel') - 3 : 0) },
+    onPick: (c, choices) => grantCompanion(c, choices),
+  }),
+  artifice: o('Artifice', "Artificer's Touch (cast mending at will; melee touch 1d6 + 1/2 level vs objects and constructs, bypassing hardness and DR); Dancing Weapons (8th).", {
+    spells: ['animate-rope', 'wood-shape', 'stone-shape', 'minor-creation', 'fabricate', 'major-creation', 'wall-of-iron', 'statue', 'prismatic-sphere'], abilities: ['artificers-touch'],
+  }),
+  charm: o('Charm', 'Dazing Touch (creature with HD ≤ your cleric level is dazed 1 round); Charming Smile (8th).', {
+    spells: ['charm-person', 'calm-emotions', 'suggestion', 'heroism', 'charm-monster', 'geas-quest', 'insanity', 'demand', 'dominate-monster'], abilities: ['dazing-touch-domain'],
+  }),
+  community: o('Community', 'Calming Touch (heal 1d6 + cleric level nonlethal damage and remove fatigued, shaken, sickened); Unity (8th: once per day, allies within 30 ft. may use your saving throw instead of their own).', {
+    spells: ['bless', 'shield-other', 'prayer', 'imbue-with-spell-ability', 'telepathic-bond', 'heroes-feast', 'refuge', 'mass-cure-critical-wounds', 'miracle'], abilities: ['calming-touch'],
+  }),
+  darkness: o('Darkness', 'Blind-Fight bonus feat; Touch of Darkness (melee touch: 20% miss chance on all attacks for 1/2 level rounds); Eyes of Darkness (8th).', {
+    spells: ['obscuring-mist', 'blindness-deafness', 'deeper-darkness', 'shadow-conjuration', 'summon-monster-v', 'shadow-walk', 'power-word-blind', 'greater-shadow-evocation', 'shades'], abilities: ['touch-of-darkness'], grantsFeats: ['blind-fight'],
+  }),
+  liberation: o('Liberation', 'Liberation (ignore paralysis, grapple and movement impediments for 1 round/level per day); Freedom\'s Call (8th).', {
+    spells: ['remove-fear', 'remove-paralysis', 'remove-curse', 'freedom-of-movement', 'break-enchantment', 'greater-dispel-magic', 'refuge', 'mind-blank', 'freedom'], abilities: ['liberation'],
+  }),
+  madness: o('Madness', 'Vision of Madness (touch: +1/2 level on attacks, saves or skill checks and the same penalty on another for 3 rounds); Aura of Madness (8th).', {
+    spells: ['lesser-confusion', 'touch-of-idiocy', 'rage', 'confusion', 'nightmare', 'phantasmal-killer', 'insanity', 'scintillating-pattern', 'weird'], abilities: ['vision-of-madness'],
+  }),
+  nobility: o('Nobility', 'Inspiring Word (ally gains +2 morale on attacks, skill checks, ability checks and saves for 1/2 level rounds); Leadership (8th).', {
+    spells: ['divine-favor', 'enthrall', 'magic-vestment', 'discern-lies', 'greater-command', 'geas-quest', 'repulsion', 'demand', 'storm-of-vengeance'], abilities: ['inspiring-word'],
+  }),
+  plant: o('Plant', 'Wooden Fist (hands become wood for 3 + Wis rounds: no AoO for unarmed, +1/2 level damage); Bramble Armor (6th: thorns deal 1d6 + 1/2 level to attackers).', {
+    spells: ['entangle', 'barkskin', 'plant-growth', 'command-plants', 'wall-of-thorns', 'repel-wood', 'animate-plants', 'control-plants', 'shambler'], abilities: ['wooden-fist'],
+  }),
+  repose: o('Repose', 'Gentle Rest (touch: staggered 1 round, or asleep if already staggered; undead staggered for Wis rounds); Ward Against Death (8th).', {
+    spells: ['deathwatch', 'gentle-repose', 'speak-with-dead', 'death-ward', 'slay-living', 'undeath-to-death', 'destruction', 'waves-of-exhaustion', 'wail-of-the-banshee'], abilities: ['gentle-rest'],
+  }),
+  rune: o('Rune', 'Scribe Scroll bonus feat; Blast Rune (rune deals 1d6 + 1/2 level energy damage to the first creature entering its square); Spell Rune (8th).', {
+    spells: ['erase', 'secret-page', 'glyph-of-warding', 'explosive-runes', 'lesser-planar-binding', 'greater-glyph-of-warding', 'instant-summons', 'symbol-of-death', 'teleportation-circle'], abilities: ['blast-rune'], grantsFeats: ['scribe-scroll'],
+  }),
+  weather: o('Weather', 'Storm Burst (ranged touch 1d6 + 1/2 level nonlethal; target takes -2 on attacks for 1 round); Lightning Lord (8th).', {
+    spells: ['obscuring-mist', 'fog-cloud', 'call-lightning', 'sleet-storm', 'ice-storm', 'control-winds', 'control-weather', 'whirlwind', 'storm-of-vengeance'], abilities: ['storm-burst'],
   }),
   chaos: o('Chaos', 'Touch of Chaos (target takes the worse of two d20 rolls for 1 round); Chaos Blade (8th).', { spells: ['protection-from-law', 'align-weapon', 'magic-circle-against-law', 'chaos-hammer', 'dispel-law', 'animate-objects', 'word-of-chaos', 'cloak-of-chaos', 'summon-monster-ix'], abilities: ['touch-of-chaos'] }),
   death: o('Death', "Bleeding Touch (1d6 bleed for 1/2 level rounds); Death's Embrace (8th: healed by channeled negative energy).", { spells: ['cause-fear', 'death-knell', 'animate-dead', 'death-ward', 'slay-living', 'create-undead', 'destruction', 'create-greater-undead', 'wail-of-the-banshee'], abilities: ['bleeding-touch'] }),
@@ -119,6 +160,20 @@ const ARCANE_SCHOOLS = {
 };
 
 const BLOODLINES = {
+  aberrant: o('Aberrant', 'Bloodline arcana: polymorph spells last 50% longer. Acidic Ray (1st: ranged touch 1d6 + 1 per two levels acid), Long Limbs (3rd: +5 ft. reach on melee touch attacks, +10 at 11th, +15 at 17th), Unusual Anatomy (9th: 25% fortification, 50% at 13th), Alien Resistance (15th: SR 10 + sorcerer level), Aberrant Form (20th: immune to critical hits and sneak attacks, blindsight 60 ft., DR 5/—).', {
+    classSkill: 'knowledge-dungeoneering',
+    spells: { 3: 'enlarge-person', 5: 'see-invisibility', 7: 'tongues', 9: 'black-tentacles', 11: 'feeblemind', 13: 'veil', 15: 'plane-shift', 17: 'mind-blank', 19: 'shapechange' },
+    feats: ['combat-casting', 'improved-disarm', 'improved-grapple', 'improved-initiative', 'improved-unarmed-strike', 'iron-will', 'silent-spell', 'skill-focus'],
+    powers: (c) => {
+      const L = c.prog('sorcererBloodlineLevel');
+      const out = { modifiers: [], resistances: {}, flags: [], abilities: ['acidic-ray'] };
+      if (L >= 3) out.flags.push(`touchReach:${L >= 17 ? 15 : L >= 11 ? 10 : 5}`);
+      if (L >= 9) out.flags.push(`fortification:${L >= 13 ? 50 : 25}`);
+      if (L >= 15) out.sr = 10 + L;
+      if (L >= 20) out.flags.push('immuneCrit', 'immune:precision', 'blindsight:60');
+      return out;
+    },
+  }),
   draconic: o('Draconic', 'Bloodline arcana: spells with your energy descriptor deal +1 damage per die. Claws (1st), Dragon Resistances (3rd), Breath Weapon (9th), Wings (15th), Power of Wyrms (20th).', {
     classSkill: 'perception',
     spells: { 3: 'mage-armor', 5: 'resist-energy', 7: 'fly', 9: 'fear', 11: 'spell-resistance', 13: 'form-of-the-dragon-i', 15: 'form-of-the-dragon-ii', 17: 'form-of-the-dragon-iii', 19: 'wish' },
@@ -295,6 +350,37 @@ const DEITIES = {
   'the-shining-shield': { name: 'The Shining Shield', alignment: 'LG', domains: ['law', 'good', 'protection', 'glory', 'healing'], favoredWeapon: 'longsword' },
 };
 
+/** Animal companion granted by a choice: choices.companion names the base animal. */
+function grantCompanion(c, choices) {
+  const { COMPANIONS } = require('./companions');
+  const type = choices.companion;
+  if (!COMPANIONS[type]) return [`Choose an animal companion (choices.companion: ${Object.keys(COMPANIONS).join(', ')})`];
+  if (!c.companion) c.companion = { type, name: choices.companionName || COMPANIONS[type].name, hp: null, status: 'alive' };
+  return [];
+}
+
+const DRUID_DOMAINS = ['air', 'animal', 'earth', 'fire', 'plant', 'water', 'weather'];
+const NATURE_BONDS = {
+  'animal-companion': o('Animal Companion', 'An animal companion that advances with druid level (choices.companion).', {
+    progressions: { companionLevel: (c) => c.classLevel('druid') },
+    onPick: (c, choices) => grantCompanion(c, choices),
+  }),
+  ...Object.fromEntries(DRUID_DOMAINS.map((d) => [d, o(`Domain (${d[0].toUpperCase()}${d.slice(1)})`, `Gain the ${d} domain powers and domain spell slots (effective cleric level = druid level).`, {
+    onPick: (c, choices) => {
+      c.choices['druid-domain'] = d;
+      return DOMAINS[d].onPick ? DOMAINS[d].onPick(c, choices) : [];
+    },
+  })])),
+};
+
+const HUNTERS_BONDS = {
+  companions: o('Companions', 'Move action: grant half your favored enemy bonus against a target to allies within 30 ft. for Wis mod rounds.', { abilities: ['hunters-bond'] }),
+  'animal-companion': o('Animal Companion', 'An animal companion with effective druid level = ranger level - 3 (choices.companion).', {
+    progressions: { companionLevel: (c) => Math.max(0, c.classLevel('ranger') - 3) },
+    onPick: (c, choices) => grantCompanion(c, choices),
+  }),
+};
+
 /**
  * Option groups a character picks from. `single` groups store one id in
  * choices[key]; the others store a list. `levelProg` names the progression
@@ -308,6 +394,9 @@ const OPTION_GROUPS = {
   'magus-arcana': { table: MAGUS_ARCANA, label: 'magus arcana', levelProg: 'magusLevel' },
   mercy: { table: MERCIES, label: 'mercy', levelProg: 'paladinLevel' },
   school: { table: ARCANE_SCHOOLS, label: 'arcane school', single: true },
+  'nature-bond': { table: NATURE_BONDS, label: 'nature bond', single: true },
+  'hunters-bond': { table: HUNTERS_BONDS, label: "hunter's bond", single: true },
+  'druid-domain': { table: DOMAINS, label: 'druid domain', single: true, progressions: { domainLevel: (c) => c.classLevel('druid') } },
 };
 
-module.exports = { RAGE_POWERS, ROGUE_TALENTS, DOMAINS, ARCANE_SCHOOLS, BLOODLINES, MAGUS_ARCANA, MERCIES, COMBAT_STYLES, WEAPON_GROUPS, TERRAINS, FAVORED_ENEMY_TYPES, DRAGON_TYPES, DEITIES, OPTION_GROUPS };
+module.exports = { HUNTERS_BONDS, NATURE_BONDS, DRUID_DOMAINS, grantCompanion, RAGE_POWERS, ROGUE_TALENTS, DOMAINS, ARCANE_SCHOOLS, BLOODLINES, MAGUS_ARCANA, MERCIES, COMBAT_STYLES, WEAPON_GROUPS, TERRAINS, FAVORED_ENEMY_TYPES, DRAGON_TYPES, DEITIES, OPTION_GROUPS };

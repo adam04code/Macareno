@@ -83,7 +83,7 @@ function slotsPerDay(char, classId) {
       continue;
     }
     let n = base === Infinity ? Infinity : base + bonusSpells(am, l);
-    if (l > 0 && d.domainSlots) n += 1;
+    if (l > 0 && d.domainSlots && (typeof d.domainSlots !== 'string' || char.choices[d.domainSlots])) n += 1;
     if (l > 0 && d.schoolSlots && char.choices.school && char.choices.school !== 'universalist') n += 1;
     out.push(n);
   }
@@ -113,9 +113,13 @@ function grantedSpells(char, classId) {
   return out;
 }
 
-function domainSpells(char) {
+/** Domain spells by level for a class with domain slots (cleric: choices.domains, druid: choices['druid-domain']). */
+function domainSpells(char, classId = 'cleric') {
   const out = {};
-  for (const dId of char.choices.domains || []) {
+  const d = sc(classId);
+  const key = d && typeof d.domainSlots === 'string' ? d.domainSlots : 'domains';
+  const v = char.choices[key];
+  for (const dId of Array.isArray(v) ? v : v ? [v] : []) {
     const dom = OPTIONS.DOMAINS[dId];
     if (!dom) continue;
     dom.spells.forEach((s, i) => {
@@ -150,7 +154,7 @@ function availableSpells(char, classId) {
     for (const [lvl, ids] of Object.entries(st.known)) ids.forEach((id) => push(Number(lvl), id));
     for (const [lvl, ids] of Object.entries(grantedSpells(char, classId))) ids.forEach((id) => push(Number(lvl), id));
   }
-  if (d.domainSlots) for (const [lvl, ids] of Object.entries(domainSpells(char))) ids.forEach((id) => push(Number(lvl), id));
+  if (d.domainSlots) for (const [lvl, ids] of Object.entries(domainSpells(char, classId))) ids.forEach((id) => push(Number(lvl), id));
   return out;
 }
 
@@ -221,8 +225,8 @@ function prepareSpells(char, classId, list) {
     const spell = SPELLS[e.spell];
     if (!spell) throw err(`Unknown spell: ${e.spell}`);
     let base = spellLevelFor(spell, d.list);
-    const isDomain = d.domainSlots && Object.entries(domainSpells(char)).some(([l, ids]) => ids.includes(spell.id) && (base === null || Number(l) <= base || e.slot === 'domain'));
-    if (base === null && isDomain) base = Number(Object.entries(domainSpells(char)).find(([, ids]) => ids.includes(spell.id))[0]);
+    const isDomain = d.domainSlots && Object.entries(domainSpells(char, classId)).some(([l, ids]) => ids.includes(spell.id) && (base === null || Number(l) <= base || e.slot === 'domain'));
+    if (base === null && isDomain) base = Number(Object.entries(domainSpells(char, classId)).find(([, ids]) => ids.includes(spell.id))[0]);
     if (base === null) throw err(`${spell.name} is not on the ${d.list} list`);
     if (!Object.values(avail).some((ids) => ids.includes(spell.id))) throw err(`${spell.name} is not available to prepare`);
     for (const m of e.metamagic || []) if (!char.hasFeat(m)) throw err(`Missing metamagic feat ${m}`);
@@ -241,8 +245,8 @@ function prepareSpells(char, classId, list) {
   for (const [lvl, n] of Object.entries(counts)) {
     if (slots[lvl] !== Infinity && n > slots[lvl]) throw err(`Too many level ${lvl} spells prepared (${n}/${slots[lvl]})`);
     // The domain slot (cleric) may only hold a domain spell.
-    if (d.domainSlots && Number(lvl) > 0 && n === slots[lvl] && !domainUsed[lvl]) {
-      const dom = (prepared[lvl] || []).some((p) => Object.values(domainSpells(char)).some((ids) => ids.includes(p.spell)));
+    if (d.domainSlots && (typeof d.domainSlots !== 'string' || char.choices[d.domainSlots]) && Number(lvl) > 0 && n === slots[lvl] && !domainUsed[lvl]) {
+      const dom = (prepared[lvl] || []).some((p) => Object.values(domainSpells(char, classId)).some((ids) => ids.includes(p.spell)));
       if (!dom) throw err(`The last level ${lvl} slot is a domain slot and must hold a domain spell`);
     }
     if (d.schoolSlots && char.choices.school && char.choices.school !== 'universalist' && Number(lvl) > 0 && n === slots[lvl]) {
@@ -265,15 +269,15 @@ function planCast(char, classId, spellId, opts = {}) {
   const metamagic = opts.metamagic || [];
   let base = spellLevelFor(spell, d.list);
   if (base === null && d.domainSlots) {
-    const found = Object.entries(domainSpells(char)).find(([, ids]) => ids.includes(spellId));
+    const found = Object.entries(domainSpells(char, classId)).find(([, ids]) => ids.includes(spellId));
     if (found) base = Number(found[0]);
   }
   if (base === null) throw err(`${spell.name} is not on the ${d.list} list`);
   if (d.style === 'prepared') {
     // Spontaneous cure/inflict conversion for clerics.
-    if (opts.convertFrom && d.spontaneous === 'cure-or-inflict') {
-      const ok = spellId.startsWith('cure-') || spellId.startsWith('inflict-');
-      if (!ok) throw err('Only cure or inflict spells can be cast spontaneously');
+    if (opts.convertFrom && d.spontaneous) {
+      const ok = d.spontaneous === 'summon-natures-ally' ? spellId.startsWith('summon-natures-ally') : spellId.startsWith('cure-') || spellId.startsWith('inflict-');
+      if (!ok) throw err(d.spontaneous === 'summon-natures-ally' ? "Only summon nature's ally spells can be cast spontaneously" : 'Only cure or inflict spells can be cast spontaneously');
       const lvl = base;
       const entry = (st.prepared[lvl] || []).find((p) => !p.used && p.spell === opts.convertFrom && p.slot !== 'domain');
       if (!entry) throw err(`No unused prepared ${opts.convertFrom} at level ${lvl} to convert`);

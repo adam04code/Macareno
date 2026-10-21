@@ -292,6 +292,6 @@ function weaponDamageForSize(dmg, size) {
 }
 
 // Starting wealth by class (average gp, Table 6-1).
-const STARTING_WEALTH = { barbarian: 105, bard: 105, cleric: 140, fighter: 175, monk: 35, paladin: 175, ranger: 175, rogue: 140, sorcerer: 70, wizard: 70, magus: 140 };
+const STARTING_WEALTH = { barbarian: 105, bard: 105, cleric: 140, druid: 70, fighter: 175, monk: 35, paladin: 175, ranger: 175, rogue: 140, sorcerer: 70, wizard: 70, magus: 140 };
 
 module.exports = { WEAPONS, ARMOR, WEAPON_SPECIALS, ARMOR_SPECIALS, WONDROUS, CONSUMABLES, GEAR, ITEMS, itemPrice, weaponDamageForSize, STARTING_WEALTH };

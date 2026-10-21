@@ -54,6 +54,7 @@ class Character extends Creature {
     this.createdAt = data.createdAt || Date.now();
     this.stats = data.stats || { kills: 0, deaths: 0 };
     this.pendingLevelUps = data.pendingLevelUps || 0;
+    this.companion = data.companion || null;
     if (this.hp.current === null || this.hp.current === undefined) this.hp.current = this.maxHp();
   }
 
@@ -91,13 +92,33 @@ class Character extends Creature {
     return Array.isArray(v) ? v.includes(id) : v === id;
   }
 
-  /** Sum a named progression across every class the character has. */
+  /**
+   * Sum a named progression across every class the character has, plus
+   * progressions granted by chosen options (e.g. a druid's nature bond makes
+   * druid levels count for domain powers or the animal companion).
+   */
   prog(name) {
     let total = 0;
     for (const c of this.classes) {
       const def = this.classDef(c);
       const fn = def.progressions && def.progressions[name];
       if (fn) total += fn(c.level);
+    }
+    this._progStack = this._progStack || new Set();
+    if (this._progStack.has(name)) return total;
+    this._progStack.add(name);
+    try {
+      for (const [key, group] of Object.entries(OPTIONS.OPTION_GROUPS)) {
+        const v = this.choices[key];
+        if (!v || (Array.isArray(v) && !v.length)) continue;
+        if (group.progressions && group.progressions[name]) total += group.progressions[name](this);
+        for (const id of Array.isArray(v) ? v : [v]) {
+          const opt = group.table[id];
+          if (opt && opt.progressions && opt.progressions[name]) total += opt.progressions[name](this);
+        }
+      }
+    } finally {
+      this._progStack.delete(name);
     }
     return total;
   }
@@ -327,13 +348,16 @@ class Character extends Creature {
       if (def && def.sr) sr = Math.max(sr, def.sr(this));
     }
     for (const it of this.equipped()) for (const sp of it.special || []) if (ARMOR_SPECIALS[sp] && ARMOR_SPECIALS[sp].sr) sr = Math.max(sr, ARMOR_SPECIALS[sp].sr);
+    const bp = this.bloodlinePowers();
+    if (bp && bp.sr) sr = Math.max(sr, bp.sr);
+    for (const opt of this.selectedOptions()) if (opt.def.sr) sr = Math.max(sr, opt.def.sr(this));
     return sr;
   }
 
   fortification() {
     let best = 0;
     for (const it of this.equipped()) for (const sp of it.special || []) if (ARMOR_SPECIALS[sp] && ARMOR_SPECIALS[sp].fortification) best = Math.max(best, ARMOR_SPECIALS[sp].fortification);
-    return best;
+    return Math.max(best, this.flagValue('fortification') || 0);
   }
 
   // ------------------------------------------------------------ class math
@@ -447,6 +471,7 @@ class Character extends Creature {
 
   itemModifiers() {
     const out = [];
+    if (this.effects.some((e) => (e.flags || []).includes('wildShape'))) return out;
     const armor = this.armorItem();
     if (armor) {
       const def = ITEMS[armor.itemId];
@@ -587,6 +612,9 @@ class Character extends Creature {
 
   baseSpeed() {
     const r = this.raceDef();
+    const ws = this.effects.find((e) => e.key === 'ability:wild-shape');
+    const wsSpeed = ws && (ws.flags || []).find((f) => f.startsWith('landSpeed:'));
+    if (wsSpeed) return Number(wsSpeed.split(':')[1]);
     let s = r.speed;
     const heavyish = (this.armorType() === 'medium' && this.armorTrainingLevel() < 1) || (this.armorType() === 'heavy' && this.armorTrainingLevel() < 2) || this.load() !== 'light';
     if (heavyish && !r.speedNeverReduced) s = T.reducedSpeed(s);
@@ -626,6 +654,8 @@ class Character extends Creature {
   /** Static profiles for every way this character can attack. */
   attackProfiles() {
     const out = [];
+    // Polymorphed (wild shape): gear melds into the new form; only its natural attacks remain.
+    if (this.effects.some((e) => (e.flags || []).includes('wildShape'))) return this.naturalAttacks();
     const main = this.equippedIn('mainHand');
     const off = this.equippedIn('offHand');
     const twoWeapons = this.wieldsTwoWeapons();
@@ -689,9 +719,9 @@ class Character extends Creature {
         out.push({
           id: `natural:${n.name.toLowerCase().replace(/\s+/g, '-')}${n.count > 1 ? `-${i + 1}` : ''}`, name: n.name, source: 'natural', natural: true, primary: n.primary !== false,
           melee: true, ranged: false, attackAbility: this.hasFeat('weapon-finesse') ? 'dex' : 'str', damageAbilityMult: n.strMult || (n.primary === false ? 0.5 : 1),
-          damageDice: weaponDamageForSize(n.damage, this.size()), damageTypes: n.type || ['bludgeoning', 'piercing', 'slashing'], critRange: 20, critMult: 2,
+          damageDice: n.fixedSize ? n.damage : weaponDamageForSize(n.damage, this.size()), damageTypes: n.type || ['bludgeoning', 'piercing', 'slashing'], critRange: 20, critMult: 2,
           enhancement: 0, masterwork: false, magic: !!n.magic, material: 'none', extraDamage: n.extra ? [n.extra] : [], alignedDamage: [], aligned: [],
-          proficient: true, groups: ['natural'], reach: this.reach(), special: ['natural'],
+          proficient: true, groups: ['natural'], reach: this.reach(), special: ['natural'], onHit: (n.onHit || []).map((k) => (typeof k === 'string' ? { kind: k } : k)),
         });
       }
     };
@@ -703,6 +733,7 @@ class Character extends Creature {
     const bp = this.bloodlinePowers();
     // Bloodline claws are usable a limited number of rounds; exposed as always-available for simplicity.
     if (bp && bp.naturalAttacks) bp.naturalAttacks.forEach(add);
+    for (const e of this.effects) for (const n of e.naturalAttacks || []) add(n);
     return out;
   }
 
@@ -764,6 +795,7 @@ class Character extends Creature {
       inventory: this.inventory, money: this.money, location: this.location, createdAt: this.createdAt, stats: this.stats,
       hp: this.hp, effects: this.effects, negativeLevels: this.negativeLevels, abilityDamage: this.abilityDamage, abilityDrain: this.abilityDrain,
       resourcesUsed: this.resourcesUsed, toggles: this.toggles, status: this.status, stable: this.stable, diedAt: this.diedAt,
+      companion: this.companion,
     };
   }
 }

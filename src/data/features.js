@@ -86,6 +86,21 @@ const FEATURES = {
   domains: f('Domains', 'Choose two domains from the deity; gain their granted powers and a domain spell slot per spell level.'),
   'spontaneous-casting': f('Spontaneous Casting', 'Convert prepared spells into cure (good/positive) or inflict (evil/negative) spells of the same level.'),
 
+  // ------------------------------------------------------------------- Druid
+  'nature-bond': f('Nature Bond', 'Choose an animal companion (choices.nature-bond = "animal-companion", choices.companion) or one of the Air, Animal, Earth, Fire, Plant, Water or Weather domains (effective cleric level = druid level, plus a domain spell slot).', { choice: 'nature-bond' }),
+  'nature-sense': f('Nature Sense', '+2 on Knowledge (nature) and Survival checks.', { modifiers: () => [mod('skill.knowledge-nature', 2, 'untyped', 'Nature sense'), mod('skill.survival', 2, 'untyped', 'Nature sense')] }),
+  'wild-empathy-druid': f('Wild Empathy', 'Improve an animal\'s attitude: 1d20 + druid level + Cha mod (magical beasts with Int 1-2 at -4).'),
+  'spontaneous-summoning': f('Spontaneous Casting', 'Convert a prepared spell (not a domain spell) into a summon nature\'s ally spell of the same level.'),
+  'woodland-stride': f('Woodland Stride', 'Move through natural undergrowth at normal speed without damage.', { flags: () => ['woodlandStride'] }),
+  'trackless-step': f('Trackless Step', 'Leaves no trail in natural surroundings and cannot be tracked.', { flags: () => ['noTracks'] }),
+  'resist-natures-lure': f("Resist Nature's Lure", '+4 on saves against the spell-like and supernatural abilities of fey, and against plant-targeting effects.', { modifiers: () => [mod('save', 4, 'untyped', "Resist nature's lure", ['fey', 'plant'])] }),
+  'wild-shape': f('Wild Shape', 'Standard action: take an animal form (beast shape I at 4th, II at 6th, III at 8th), elemental form (elemental body I at 6th, II at 8th, III at 10th, IV at 12th) or plant form (plant shape I at 8th, II at 10th, III at 12th) for 1 hour/level. Uses/day: 1 at 4th, +1 per two levels, at will at 20th.', {
+    abilities: ['wild-shape', 'end-wild-shape'], resources: (c) => ({ wildShape: { max: c.prog('wildShapeUses'), per: 'day' } }),
+  }),
+  'venom-immunity': f('Venom Immunity', 'Immune to all poisons.', { immunities: ['poison'] }),
+  'a-thousand-faces': f('A Thousand Faces', 'Change appearance at will, as alter self (normal form only).'),
+  'timeless-body-druid': f('Timeless Body', 'No penalties to ability scores for aging and cannot be magically aged.'),
+
   // ----------------------------------------------------------------- Fighter
   'fighter-bonus-feat': f('Bonus Feat', 'Gain a bonus combat feat.'),
   bravery: f('Bravery', '+1 on Will saves vs fear at 2nd level, +1 every four levels thereafter.', { modifiers: (c) => [mod('save.will', c.prog('bravery'), 'untyped', 'Bravery', ['fear'])] }),
@@ -181,7 +196,7 @@ const FEATURES = {
   'favored-terrain': f('Favored Terrain', '+2 initiative and Knowledge (geography), Perception, Stealth, Survival in a favored terrain.', {
     modifiers: (c) => (c.choices['favored-terrain'] || []).flatMap((t) => ['initiative', 'skill.perception', 'skill.stealth', 'skill.survival', 'skill.knowledge-geography'].map((k) => mod(k, t.bonus || 2, 'untyped', `Favored terrain (${t.terrain})`, [`terrain:${t.terrain}`]))),
   }),
-  'hunters-bond': f("Hunter's Bond", 'Move action: grant half favored enemy bonus to allies within 30 ft. against a target for Wis mod rounds (or gain an animal companion).', { abilities: ['hunters-bond'] }),
+  'hunters-bond': f("Hunter's Bond", 'Choose companions (move action: grant half your favored enemy bonus to allies within 30 ft. for Wis mod rounds) or an animal companion (effective druid level = ranger level - 3).', { choice: 'hunters-bond' }),
   'woodland-stride': f('Woodland Stride', 'Move through natural undergrowth at normal speed without damage.'),
   'swift-tracker': f('Swift Tracker', 'Track at normal speed without penalty.'),
   quarry: f('Quarry', 'Standard action: denote a quarry; +2 insight on attacks against it, take 10 on Survival to track it.', { abilities: ['quarry'] }),
