@@ -40,7 +40,7 @@ Also: `regeneration: { amount, bypass: ['fire'] }`, `fastHealing`, `dr`, `resist
 'great-fortitude': F('Great Fortitude', ['general'], {}, '+2 on Fortitude saves.', { modifiers: () => [mod('save.fort', 2, 'untyped', 'Great Fortitude')] }),
 ```
 
-Prerequisite keys: `abilities, bab, feats, featParams, skills, casterLevel, classLevel, fighterLevel, level, classFeature, spellcaster, race, proficient`.
+Prerequisite keys: `abilities, bab, feats, featParams, skills, casterLevel, classLevel, fighterLevel, level, classFeature, spellcaster, race, proficient, casting, progression, custom` (`custom(char)` returns a list of failure strings).
 Feats with combat effects (Power Attack, TWF...) are looked up by id in `src/engine/attacks.js` and `combat.js`.
 
 ## Items — `src/data/equipment.js`
@@ -50,10 +50,12 @@ Wondrous items: `wondrous(name, slot, cost, (source) => [modifiers])`. Potions, 
 
 ## Classes
 
-- Base classes: `src/data/classes/base.js`. Prestige classes: `prestige.js`. Spell tables: `spellTables.js`.
+- Base classes: `src/data/classes/base.js` (Core + magus), `apg.js`, `acg.js`, `oa.js`. Prestige classes: `prestige.js`. Spell tables: `spellTables.js`.
+- Selectable options (talents, hexes, domains, bloodlines...) go in an option group in `src/data/classOptions.js` (`classOptionsApg.js`, `classOptionsAcg.js`, `kineticist.js` hold the tables). A class feature with `choice: '<group>'` asks for one pick at that level.
+- Class spell lists that aren't stored on the spells themselves live in `src/data/spells/classLists.js`; classes that borrow a list are in `LIST_ALIASES` (`src/data/spells/index.js`).
 - `features: { level: [featureKey] }` refers to `src/data/features.js`, where each feature can provide `modifiers(c)`, `flags(c)`, `resources(c)`, `abilities`, `dr(c)`, `resistances(c)`, `immunities`, `grantsFeats` and `naturalAttacks(c)`.
 - `progressions` are summed across classes, so sneak attack from rogue, assassin and arcane trickster stacks automatically.
-- Activated abilities live in `src/engine/classAbilities.js`.
+- Activated abilities live in `src/engine/classAbilities.js` (plus `abilitiesApg.js`, `abilitiesAcg.js`, `abilitiesOa.js`). `perDay(u)` registers a daily `power:<id>` resource automatically.
 
 ## The world — `src/data/world.js`
 

@@ -4,15 +4,17 @@ A headless, text-first MMORPG server built on the **Pathfinder Roleplaying Game 
 Open Game License (the rules hosted on d20pfsrd.com). It is a server and rules engine only: no client is included.
 Any platform (terminal/MUD client, web, mobile, Discord bot, game engine) can connect over HTTP + WebSocket.
 
-> The classes requested (magus, duelist, eldritch knight, assassin, dragon disciple, mystic theurge, arcane trickster) and
-> the d20pfsrd.com reference are Pathfinder **1st Edition**, so that is the edition implemented.
+> The d20pfsrd.com reference is Pathfinder **1st Edition**, so that is the edition implemented. Content scope follows
+> what *Pathfinder: Wrath of the Righteous* uses, limited to Open Game Content: the 25 base classes from the Core
+> Rulebook, Advanced Player's Guide, Advanced Class Guide and Occult Adventures (kineticist), 8 prestige classes,
+> 13 races, 670+ spells, 250+ feats and 127 Bestiary creatures. See [docs/RULES.md](docs/RULES.md) for the full list.
 
 ## Quick start
 
 ```bash
 npm install
 npm start                 # http://localhost:3000, WebSocket ws://localhost:3000/ws
-npm test                  # 31 tests: rules, classes 1-20, prestige classes, combat, world, HTTP + WebSocket
+npm test                  # 42 tests: rules, all classes 1-20, prestige classes, combat, spells, world, HTTP + WebSocket
 ```
 
 ```bash
@@ -71,6 +73,10 @@ src/
     spellEffects.js     spell resolution: damage/saves/evasion, buffs, conditions, summons, dispel, raise dead, poisons/diseases
     attacks.js          attack bonus, AC, concealment, mirror image, crits, damage, DR, resistances, incorporeal
     classAbilities.js   activated abilities (rage, smite, channel, bardic performance, ki, arcane pool, breath weapon...)
+    abilitiesApg.js     alchemist bombs/mutagen, cavalier challenge, judgments, revelations, witch hexes
+    abilitiesAcg.js     bloodrage, arcanist exploits, spirit powers, raging songs, studied target, blessings, fervor
+    abilitiesOa.js      kinetic blast (infusions, metakinesis, burn), gather power, internal buffer
+    companion.js        animal companions (druid, ranger, cavalier, hunter) built from the advancement table
     maneuvers.js        combat maneuvers, grapple, feint, demoralize
     combat.js           encounters: initiative, action economy, grid movement, AoO, full attacks, casting, monster AI
     inventory.js        items, equipment slots, buying/selling, encumbrance
@@ -80,7 +86,8 @@ src/
     sheet.js            character sheet serializer
     store.js accounts.js JSON persistence, scrypt-hashed accounts, bearer tokens
   data/               Open Game Content as data
-    races, classes (base + prestige), features, class options, feats, spells (0-9), bestiary, equipment, conditions, world
+    races, classes (core/apg/acg/oa base classes + prestige), features, class options, feats, spells (0-9) and
+    class spell lists, kineticist talents, companions, wild shape forms, bestiary, equipment, conditions, world
 test/                 node:test suites
 ```
 

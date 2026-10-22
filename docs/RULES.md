@@ -7,18 +7,31 @@ What the engine implements from the Pathfinder RPG (1st Edition) Open Game Conte
 
 | Category | Count | Notes |
 |---|---|---|
-| Races | 10 | 7 core races plus aasimar, tiefling and drow (racial traits, ability modifiers, senses, resistances, spell-like abilities, weapon familiarity) |
-| Base classes | 11 | barbarian, bard, cleric, fighter, monk, paladin, ranger, rogue, sorcerer, wizard, magus. Levels 1–20 |
-| Prestige classes | 7 | arcane trickster, assassin, darkfire adept, dragon disciple, duelist, eldritch knight, mystic theurge. Levels 1–10 |
-| Class features | ~200 | every level of every class, with mechanical hooks |
-| Class options | 100+ | rage powers, rogue talents (incl. advanced), 20 cleric domains, 9 arcane schools, 9 sorcerer bloodlines, magus arcana, paladin mercies, ranger combat styles, favored enemies/terrains, dragon types |
-| Feats | 189 | Core Rulebook feats + monster feats + a few APG/UC staples |
-| Spells | 265 | levels 0–9 for the sorcerer/wizard, cleric, bard, paladin, ranger and magus lists |
-| Creatures | 103 | humanoids, undead, animals, magical beasts, giants, dragons, outsiders, oozes, aberrations, 24 elementals |
+| Races | 13 | 7 core races plus aasimar, tiefling, drow, dhampir, kitsune and oread (racial traits, ability modifiers, senses, resistances, spell-like abilities, weapon familiarity, natural attacks) |
+| Base classes | 25 | **Core:** barbarian, bard, cleric, druid, fighter, monk, paladin, ranger, rogue, sorcerer, wizard; **Ultimate Magic:** magus; **APG:** alchemist, cavalier, inquisitor, oracle, witch; **ACG:** arcanist, bloodrager, hunter, shaman, skald, slayer, warpriest; **Occult Adventures:** kineticist. Levels 1–20 |
+| Prestige classes | 8 | arcane trickster, assassin, dragon disciple, duelist, eldritch knight, loremaster, mystic theurge, stalwart defender. Levels 1–10 |
+| Class features | 320+ | every level of every class, with mechanical hooks |
+| Class options | 700+ in 32 groups | rage powers, rogue/slayer talents, 32 domains, arcane schools, 10 sorcerer and 10 bloodrager bloodlines, magus arcana, mercies, discoveries, cavalier orders, judgments, 10 oracle mysteries with revelations and curses, witch and shaman hexes, patrons, familiars, arcanist exploits, 10 shaman spirits, warpriest blessings, kineticist elements, 40 infusions and utility wild talents, loremaster secrets, defensive powers, animal companions |
+| Feats | 258 | Core Rulebook feats, teamwork, style and combat feats and metamagic from the APG, UM, UC and ACG, extra-class-feature feats, monster feats |
+| Spells | 676 | all Core Rulebook spells plus the APG/UM/UC/ACG spells the newer classes need. Class lists: sorcerer/wizard (also arcanist), cleric (also oracle; warpriest up to 6th), druid, bard (also skald), paladin, ranger, magus, alchemist, inquisitor, witch, shaman, bloodrager; hunter uses the druid or ranger level |
+| Creatures | 127 | humanoids, undead, animals, magical beasts, giants, dragons, outsiders, oozes, aberrations, 24 elementals and every creature on the summon monster and summon nature's ally tables |
 | Items | 187 | weapons, armor/shields, weapon & armor special abilities, wondrous items, potions, scrolls, wands, alchemical items, gear |
 | Conditions | 30+ | all Core Rulebook conditions |
 
-> **Darkfire Adept.** This is a third-party OGL prestige archetype (Purple Duck Games). Its text could not be retrieved while building, so it is a **reconstruction** that follows the theme: darkness-wreathed fire, a darkfire bolt, umbral flames and shadow sight. Its numbers are balanced against the Core prestige classes. Replace `src/data/classes/prestige.js` → `darkfire-adept` and the `darkfire*` entries in `src/data/features.js` if you have the source text.
+Rules and numbers were checked against d20pfsrd.com and, where its pages were unavailable, the Archives of Nethys
+(the same OGL text). The previous **Darkfire Adept** prestige class was removed: it is a third-party product that
+isn't on d20pfsrd or in WotR, and its mechanics had been reconstructed without the source text.
+
+Not implemented yet: the shifter (Ultimate Wilderness) and class archetypes (`src/data/classes/archetypes.js` supports
+them, but none are populated).
+
+## Class mechanics beyond the Core Rulebook
+
+- **Choices** are data-driven option groups (`src/data/classOptions.js`): a class feature declares `choice: '<group>'` and the builder validates level, prerequisites, deity/alignment and spirit/element access.
+- **Animal companions** advance on the druid table for druids, rangers (level −3), cavaliers (mounts) and hunters, built in `src/engine/companion.js`. Wild shape uses the beast shape / elemental body form tables.
+- **Alchemist:** bombs (splash, discoveries modify them), mutagens and cognatogens, extracts that only affect the drinker. **Cavalier:** challenge, orders, banner, tactician. **Inquisitor:** judgments, bane, domain powers. **Oracle:** mysteries, revelations, curses, mystery spells. **Witch:** hexes, major and grand hexes, patron spells, familiar.
+- **Arcanist:** spellbook plus a daily set of prepared spells cast with spontaneous slots, arcane reservoir (spend for +1 CL or DC, cast option `reservoir`), consume spells, exploits. **Bloodrager:** bloodrage, bloodline powers active while raging (claws, resistances, wings), bonus feats and spells, blood casting. **Hunter:** animal focus aspects, shared teamwork feats, summon nature's ally known. **Shaman:** spirit and wandering spirit (spirit magic slots, abilities, greater spirit), Wis-based hexes. **Skald:** raging song and inspired rage that shares rage powers. **Slayer:** studied target, sneak attack, slayer talents. **Warpriest:** blessings, fervor, sacred weapon and armor, channel energy through fervor.
+- **Kineticist:** simple and composite blasts (physical = ranged attack, energy = ranged touch), form and substance infusions, burn as nonlethal damage per character level that only rest removes (per-round and total limits), gather power, elemental overflow (attack/damage and size bonuses by burn), infusion specialization, metakinesis, internal buffer, elemental defense, expanded element.
 
 ## Characters
 
@@ -52,10 +65,9 @@ Every d20 goes through `src/engine/checks.js`: skill checks (trained-only rule, 
 - Slots per day for every table, bonus spells from ability scores (minimum score 10 + level), cleric domain slots, specialist school slots, opposition schools costing two slots, cantrips and orisons cast at will, and dragon disciple bonus spells.
 - Prepared casting (wizard, cleric, paladin, ranger, magus) and spontaneous casting (sorcerer, bard, and cleric cure/inflict conversion). Spellbooks can be learned from scrolls (Spellcraft DC 15 + level, 10 gp/page). Spell recall and pearls of power restore slots.
 - Metamagic: Empower, Maximize (and both together), Extend, Quicken (swift action), Silent, Still, Enlarge, Widen, Heighten. Spontaneous metamagic casting takes a full-round action.
-- Save DCs include Spell Focus, Greater Spell Focus, racial (gnome illusion), bloodline arcana (+2 charm/compulsion) and umbral flames. Spell resistance uses caster level checks (Spell Penetration, elven magic).
+- Save DCs include Spell Focus, Greater Spell Focus, racial (gnome illusion, kitsune enchantment), bloodline arcana (+2 charm/compulsion) and the arcanist reservoir. Spell resistance uses caster level checks (Spell Penetration, elven magic).
 - Arcane spell failure from armor, with exceptions for bards in light armor and magi in light/medium/heavy by level. Silence blocks verbal spells. Grappled casters must make concentration checks.
 - Effect kinds: damage (dice per level with caps, rays, missiles, touch attacks with crits, area bursts, cones and lines, evasion and improved evasion, ongoing acid, chain), healing and inflicting (positive and negative energy against undead), buffs (typed modifiers, temp hp, DR, resistances, SR, size changes, mirror images, fire shield), conditions (HD limits and HD pools for *sleep*/*color spray*, saves every round), debuffs, removal (*remove fear*, *restoration*, *heal*...), targeted dispel checks, summon monster I–IX tables, raise dead/resurrection with their negative levels, death effects, power words, holy word/blasphemy, energy drain, *black tentacles*, *spiritual weapon*, poison, teleport and time stop.
-- Darkfire: fire spells can be split into fire and negative energy (`options.darkfire: true`).
 
 ## Afflictions
 
@@ -69,4 +81,5 @@ Poisons and diseases use onset saves and frequency (every round for poison, ever
 - Polymorph effects (alter self, form of the dragon, elemental body) apply their numeric bonuses but not new natural attacks or movement types.
 - Charm, suggestion and dominate apply a tracked condition. Clients and GMs decide behavior.
 - Item creation feats are recorded. Crafting isn't implemented yet.
-- Spell lists cover the most-used spells at each level, not every OGL spell. Adding more is data-only (see `CONTENT.md`).
+- Spell lists cover every Core Rulebook spell plus the later spells the implemented classes need, not every OGL spell. Adding more is data-only (see `CONTENT.md`).
+- Many utility wild talents, revelations and hexes with narrative effects (scrying, shaping stone, weather) are recorded with their rules text but have no combat automation.
