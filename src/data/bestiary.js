@@ -647,6 +647,158 @@ const BESTIARY = {
 
   // ------------------------------------------------------------ Elementals
   ...elementals(),
+  // ------------------------------------------------ Summon monster / nature's ally creatures
+  // Stat blocks checked against the Bestiary text on Archives of Nethys.
+  dolphin: m('Dolphin', '1/2', {
+    type: 'animal', init: 2, senses: ['blindsight 120', 'low-light vision'], speed: { land: 0, swim: 80 },
+    ac: { natural: 1 }, hp: '2d8+2', hd: 2, saves: { fort: 4, ref: 5, will: 1 },
+    melee: [atk('slam', 3, '1d4+1', { type: BLUDG })], abilities: { str: 12, dex: 15, con: 13, int: 2, wis: 13, cha: 6 }, bab: 1, cmb: 2, cmd: 14,
+    feats: ['weapon-finesse'], skills: { perception: 9, swim: 9 }, treasure: 'none', description: 'An intelligent, playful sea mammal that hunts by echolocation.',
+  }),
+  stirge: m('Stirge', '1/2', {
+    type: 'magical beast', size: 'tiny', init: 4, senses: ['darkvision 60', 'low-light vision', 'scent'], speed: { land: 10, fly: 40 },
+    ac: {}, hp: '1d10', hd: 1, saves: { fort: 2, ref: 6, will: 1 },
+    melee: [atk('touch', 7, '0', { onHit: [{ kind: 'attach' }, { kind: 'bloodDrain', con: 1, max: 4 }] })], abilities: { str: 3, dex: 19, con: 10, int: 1, wis: 12, cha: 6 }, bab: 1, cmb: 3, cmd: 9, cmdVs: { trip: 17 },
+    feats: ['weapon-finesse'], skills: { fly: 8, stealth: 16 }, treasure: 'none', description: 'A mosquito-like flying horror that drains blood.',
+  }),
+  hyena: m('Hyena', '1', {
+    type: 'animal', init: 2, senses: ['low-light vision', 'scent'], speed: { land: 50 },
+    ac: { natural: 2 }, hp: '2d8+4', hd: 2, saves: { fort: 5, ref: 5, will: 1 },
+    melee: [atk('bite', 3, '1d6+3', { onHit: [trip] })], abilities: { str: 14, dex: 15, con: 15, int: 2, wis: 13, cha: 6 }, bab: 1, cmb: 3, cmd: 15, cmdVs: { trip: 19 },
+    feats: ['skill-focus'], skills: { perception: 8, stealth: 6 }, treasure: 'none', description: 'A cackling scavenger that hunts in packs.',
+  }),
+  octopus: m('Octopus', '1', {
+    type: 'animal', size: 'small', subtypes: ['aquatic'], init: 3, senses: ['low-light vision'], speed: { land: 20, swim: 30 },
+    ac: { natural: 1 }, hp: '2d8+4', hd: 2, saves: { fort: 5, ref: 6, will: 1 },
+    melee: [atk('bite', 5, '1d3+1', { onHit: [poison('octopus venom', 13, { str: '1' })] }), atk('tentacles', 3, '0', { primary: false, onHit: [grab] })],
+    abilities: { str: 12, dex: 17, con: 14, int: 2, wis: 13, cha: 3 }, bab: 1, cmb: 1, cmd: 14, special: [{ kind: 'inkCloud', radius: 10 }], treasure: 'none', description: 'A clever eight-armed sea creature.',
+  }),
+  cheetah: m('Cheetah', '2', {
+    type: 'animal', init: 8, senses: ['low-light vision', 'scent'], speed: { land: 50 },
+    ac: { natural: 1 }, hp: '3d8+6', hd: 3, saves: { fort: 5, ref: 7, will: 2 },
+    melee: [atk('bite', 6, '1d6+3', { onHit: [trip] }), atk('claw', 6, '1d3+3', { count: 2, type: SLASH })], abilities: { str: 17, dex: 19, con: 15, int: 2, wis: 12, cha: 6 }, bab: 2, cmb: 5, cmd: 19, cmdVs: { trip: 23 },
+    feats: ['improved-initiative', 'weapon-finesse'], special: [{ kind: 'sprint' }], treasure: 'none', description: 'The fastest of the great cats.',
+  }),
+  'constrictor-snake': m('Constrictor Snake', '2', {
+    type: 'animal', init: 3, senses: ['scent'], speed: { land: 20, climb: 20, swim: 20 },
+    ac: { natural: 2 }, hp: '3d8+6', hd: 3, saves: { fort: 4, ref: 6, will: 2 },
+    melee: [atk('bite', 5, '1d4+4', { onHit: [grab] })], abilities: { str: 17, dex: 17, con: 12, int: 1, wis: 12, cha: 2 }, bab: 2, cmb: 5, cmd: 18,
+    special: [{ kind: 'constrict', dice: '1d4+4' }], skills: { perception: 12 }, treasure: 'none', description: 'A heavy snake that crushes its prey.',
+  }),
+  'monitor-lizard': m('Monitor Lizard', '2', {
+    type: 'animal', init: 2, senses: ['low-light vision', 'scent'], speed: { land: 30, swim: 30 },
+    ac: { natural: 3 }, hp: '3d8+9', hd: 3, saves: { fort: 8, ref: 5, will: 2 },
+    melee: [atk('bite', 5, '1d8+4', { onHit: [grab, poison('monitor lizard venom', 14, { dex: '1d2' })] })], abilities: { str: 17, dex: 15, con: 17, int: 2, wis: 12, cha: 6 }, bab: 2, cmb: 5, cmd: 17, cmdVs: { trip: 21 },
+    skills: { perception: 8 }, treasure: 'none', description: 'A large venomous lizard.',
+  }),
+  aurochs: m('Aurochs', '2', {
+    type: 'animal', size: 'large', init: 0, senses: ['low-light vision', 'scent'], speed: { land: 40 },
+    ac: { natural: 4 }, hp: '3d8+9', hd: 3, saves: { fort: 6, ref: 3, will: 1 },
+    melee: [atk('gore', 7, '1d8+9', { type: PIERCE })], abilities: { str: 23, dex: 10, con: 17, int: 2, wis: 11, cha: 4 }, bab: 2, cmb: 9, cmd: 19, cmdVs: { trip: 23 },
+    special: [{ kind: 'trample', dice: '2d6+9', dc: 17 }, { kind: 'stampede' }], skills: { perception: 9 }, treasure: 'none', description: 'A massive wild ox.',
+  }),
+  rhinoceros: m('Rhinoceros', '4', {
+    type: 'animal', size: 'large', init: 0, senses: ['scent'], speed: { land: 40 },
+    ac: { natural: 7 }, hp: '5d8+20', hd: 5, saves: { fort: 10, ref: 4, will: 2 },
+    melee: [atk('gore', 8, '2d6+9', { type: PIERCE })], abilities: { str: 22, dex: 10, con: 19, int: 2, wis: 13, cha: 5 }, bab: 3, cmb: 10, cmd: 20, cmdVs: { trip: 24 },
+    special: [{ kind: 'powerfulCharge', damage: '4d6+12' }], skills: { perception: 12 }, treasure: 'none', description: 'An armored beast that charges anything it dislikes.',
+  }),
+  'giant-wasp': m('Giant Wasp', '3', {
+    type: 'vermin', size: 'large', init: 1, senses: ['darkvision 60'], speed: { land: 20, fly: 60 },
+    ac: { natural: 4 }, hp: '4d8+16', hd: 4, saves: { fort: 8, ref: 2, will: 2 }, immune: ['mind-affecting'],
+    melee: [atk('sting', 6, '1d8+6', { type: PIERCE, onHit: [poison('giant wasp venom', 18, { dex: '1d2' })] })], abilities: { str: 18, dex: 12, con: 18, int: null, wis: 13, cha: 11 }, bab: 3, cmb: 8, cmd: 19,
+    skills: { perception: 9 }, treasure: 'none', description: 'A wasp the size of a horse.',
+  }),
+  tiger: m('Tiger', '4', {
+    type: 'animal', size: 'large', init: 6, senses: ['low-light vision', 'scent'], speed: { land: 40 },
+    ac: { natural: 3 }, hp: '6d8+18', hd: 6, saves: { fort: 8, ref: 7, will: 3 },
+    melee: [atk('claw', 10, '1d8+6', { count: 2, type: SLASH, onHit: [grab] }), atk('bite', 9, '2d6+6', { onHit: [grab] })],
+    abilities: { str: 23, dex: 15, con: 17, int: 2, wis: 12, cha: 6 }, bab: 4, cmb: 11, cmd: 23, cmdVs: { trip: 27 }, special: [{ kind: 'pounce' }, { kind: 'rake', count: 2, bonus: 10, damage: '1d8+6' }],
+    skills: { perception: 8 }, treasure: 'none', description: 'A striped great cat, the deadliest of its kind.',
+  }),
+  'dire-ape': m('Dire Ape', '3', {
+    type: 'animal', size: 'large', init: 2, senses: ['low-light vision', 'scent'], speed: { land: 30, climb: 30 },
+    ac: { natural: 4 }, hp: '4d8+12', hd: 4, saves: { fort: 7, ref: 6, will: 4 },
+    melee: [atk('bite', 6, '1d6+4'), atk('claw', 6, '1d4+4', { count: 2, type: SLASH })], abilities: { str: 19, dex: 15, con: 16, int: 2, wis: 12, cha: 7 }, bab: 3, cmb: 8, cmd: 20,
+    special: [{ kind: 'rend', requires: 'claw', dice: '1d4+6' }], treasure: 'none', description: 'A gigantopithecus: an ape the size of an ogre.',
+  }),
+  orca: m('Orca', '5', {
+    type: 'animal', size: 'huge', init: 6, senses: ['blindsight 120', 'low-light vision'], speed: { land: 0, swim: 80 },
+    ac: { natural: 6 }, hp: '9d8+27', hd: 9, saves: { fort: 9, ref: 8, will: 5 },
+    melee: [atk('bite', 13, '2d6+12')], abilities: { str: 27, dex: 15, con: 16, int: 2, wis: 15, cha: 6 }, bab: 6, cmb: 16, cmd: 28, reach: 10,
+    feats: ['endurance', 'improved-initiative', 'skill-focus', 'weapon-focus'], skills: { perception: 19 }, treasure: 'none', description: 'A killer whale, apex hunter of the seas.',
+  }),
+  satyr: m('Satyr', '4', {
+    alignment: 'CN', type: 'fey', init: 2, senses: ['low-light vision'], speed: { land: 40 },
+    ac: { dodge: 1, natural: 5 }, hp: '8d6+16', hd: 8, saves: { fort: 4, ref: 8, will: 8 }, dr: [{ amount: 5, bypass: 'cold-iron' }],
+    melee: [weapon('dagger', 6, '1d4+2', { type: PIERCE, crit: [19, 2] }), atk('horns', 1, '1d6+1', { primary: false })], ranged: [weapon('shortbow', 6, '1d6', { type: PIERCE, crit: [20, 3], range: 60 })],
+    abilities: { str: 14, dex: 15, con: 15, int: 12, wis: 14, cha: 19 }, bab: 4, cmb: 6, cmd: 18,
+    spellLike: [{ spell: 'charm-person', perDay: Infinity, cl: 8, dc: 15 }, { spell: 'dancing-lights', perDay: Infinity, cl: 8 }, { spell: 'sleep', perDay: Infinity, cl: 8, dc: 15 }, { spell: 'suggestion', perDay: Infinity, cl: 8, dc: 17 }, { spell: 'fear', perDay: 1, cl: 8, dc: 18 }, { spell: 'summon-natures-ally-iii', perDay: 1, cl: 8 }],
+    special: [{ kind: 'pipes', dc: 18 }], skills: { perception: 18 }, languages: ['Common', 'Sylvan'], description: 'A goat-legged reveler of the wild places.',
+  }),
+  'dire-bear': m('Dire Bear', '7', {
+    type: 'animal', size: 'large', init: 5, senses: ['low-light vision', 'scent'], speed: { land: 40 },
+    ac: { natural: 8 }, hp: '10d8+50', hd: 10, saves: { fort: 12, ref: 8, will: 4 },
+    melee: [atk('claw', 13, '1d6+7', { count: 2, type: SLASH, onHit: [grab] }), atk('bite', 13, '1d8+7')], abilities: { str: 25, dex: 13, con: 21, int: 2, wis: 12, cha: 10 }, bab: 7, cmb: 15, cmd: 26, cmdVs: { trip: 30 },
+    treasure: 'none', description: 'A cave bear of terrifying size.',
+  }),
+  elephant: m('Elephant', '7', {
+    type: 'animal', size: 'huge', init: 0, senses: ['low-light vision', 'scent'], speed: { land: 40 },
+    ac: { natural: 9 }, hp: '11d8+44', hd: 11, saves: { fort: 13, ref: 7, will: 6 },
+    melee: [atk('gore', 16, '2d8+10', { type: PIERCE }), atk('slam', 16, '2d6+10', { type: BLUDG })], abilities: { str: 30, dex: 10, con: 19, int: 2, wis: 13, cha: 7 }, bab: 8, cmb: 20, cmd: 30, cmdVs: { trip: 34 }, reach: 10,
+    special: [{ kind: 'trample', dice: '2d8+15', dc: 25 }], treasure: 'none', description: 'A towering beast with tusks and a trunk.',
+  }),
+  girallon: m('Girallon', '6', {
+    type: 'magical beast', size: 'large', init: 7, senses: ['darkvision 60', 'low-light vision', 'scent'], speed: { land: 40, climb: 40 },
+    ac: { natural: 6 }, hp: '7d10+35', hd: 7, saves: { fort: 9, ref: 8, will: 5 },
+    melee: [atk('bite', 10, '1d6+4'), atk('claw', 10, '1d4+4', { count: 4, type: SLASH })], abilities: { str: 19, dex: 17, con: 18, int: 2, wis: 12, cha: 7 }, bab: 7, cmb: 12, cmd: 25,
+    special: [{ kind: 'rend', requires: 'claw', dice: '1d4+6' }], skills: { perception: 11 }, treasure: 'none', description: 'A four-armed white ape of the jungle.',
+  }),
+  roc: m('Roc', '9', {
+    type: 'animal', size: 'gargantuan', init: 6, senses: ['low-light vision'], speed: { land: 20, fly: 80 },
+    ac: { natural: 14 }, hp: '16d8+48', hd: 16, saves: { fort: 13, ref: 14, will: 8 },
+    melee: [atk('talon', 18, '2d6+9', { count: 2, type: SLASH, crit: [19, 2], onHit: [grab] }), atk('bite', 17, '2d8+9')], abilities: { str: 28, dex: 15, con: 17, int: 2, wis: 12, cha: 11 }, bab: 12, cmb: 25, cmd: 37, reach: 15,
+    treasure: 'none', description: 'A bird so vast it carries off elephants.',
+  }),
+  'dire-crocodile': m('Dire Crocodile', '9', {
+    type: 'animal', size: 'gargantuan', init: 4, senses: ['low-light vision'], speed: { land: 20, swim: 30 },
+    ac: { natural: 15 }, hp: '12d8+84', hd: 12, saves: { fort: 15, ref: 8, will: 8 },
+    melee: [atk('bite', 18, '3d6+13', { crit: [19, 2], onHit: [grab] }), atk('tail slap', 13, '4d8+6', { type: BLUDG, primary: false })], abilities: { str: 37, dex: 10, con: 25, int: 1, wis: 14, cha: 2 }, bab: 9, cmb: 26, cmd: 36, cmdVs: { trip: 40 }, reach: 15,
+    special: [{ kind: 'deathRoll', dice: '3d6+19' }, { kind: 'swallowWhole', dice: '3d6+13', ac: 16, hp: 13 }, { kind: 'sprint' }], treasure: 'none', description: 'A prehistoric crocodile large enough to swallow a horse.',
+  }),
+  mastodon: m('Mastodon', '9', {
+    type: 'animal', size: 'huge', init: 1, senses: ['low-light vision', 'scent'], speed: { land: 40 },
+    ac: { natural: 12 }, hp: '14d8+70', hd: 14, saves: { fort: 14, ref: 10, will: 7 },
+    melee: [atk('gore', 21, '2d8+12', { type: PIERCE }), atk('slam', 20, '2d6+12', { type: BLUDG })], abilities: { str: 34, dex: 12, con: 21, int: 2, wis: 13, cha: 7 }, bab: 10, cmb: 24, cmd: 35, cmdVs: { trip: 39 }, reach: 10,
+    special: [{ kind: 'trample', dice: '2d8+18', dc: 29 }], treasure: 'none', description: 'A shaggy, tusked giant of the ice age.',
+  }),
+  'dire-shark': m('Dire Shark', '9', {
+    type: 'animal', size: 'gargantuan', subtypes: ['aquatic'], init: 6, senses: ['blindsense 30', 'keen scent'], speed: { land: 0, swim: 60 },
+    ac: { natural: 15 }, hp: '15d8+45', hd: 15, saves: { fort: 14, ref: 13, will: 8 },
+    melee: [atk('bite', 17, '4d10+15', { crit: [19, 2], onHit: [grab] })], abilities: { str: 30, dex: 15, con: 17, int: 1, wis: 12, cha: 10 }, bab: 11, cmb: 25, cmd: 37, reach: 15,
+    special: [{ kind: 'swallowWhole', dice: '2d6+15', ac: 17, hp: 11 }], treasure: 'none', description: 'A megalodon, the largest shark of all.',
+  }),
+  tyrannosaurus: m('Tyrannosaurus', '9', {
+    type: 'animal', size: 'gargantuan', init: 5, senses: ['low-light vision', 'scent'], speed: { land: 40 },
+    ac: { natural: 14 }, hp: '18d8+72', hd: 18, saves: { fort: 15, ref: 12, will: 10 },
+    melee: [atk('bite', 20, '4d6+22', { crit: [19, 2], onHit: [grab] })], abilities: { str: 32, dex: 13, con: 19, int: 2, wis: 15, cha: 10 }, bab: 13, cmb: 28, cmd: 39, reach: 20,
+    special: [{ kind: 'swallowWhole', dice: '2d8+11', ac: 17, hp: 15 }], treasure: 'none', description: 'The tyrant lizard king.',
+  }),
+  pixie: m('Pixie', '4', {
+    alignment: 'NG', type: 'fey', size: 'small', init: 5, senses: ['low-light vision'], speed: { land: 20, fly: 60 },
+    ac: { dodge: 1, natural: 1 }, hp: '4d6+4', hd: 4, saves: { fort: 2, ref: 9, will: 6 }, dr: [{ amount: 10, bypass: 'cold-iron' }], sr: 15, flags: ['invisible'],
+    melee: [weapon('short sword', 8, '1d4-2', { type: PIERCE, crit: [19, 2] })], ranged: [weapon('longbow', 8, '1d6-2', { type: PIERCE, crit: [20, 3], range: 100, onHit: [{ kind: 'condition', condition: 'unconscious', save: 'will', dc: 15, rounds: 50 }] })],
+    abilities: { str: 7, dex: 21, con: 12, int: 16, wis: 15, cha: 16 }, bab: 2, cmb: -1, cmd: 15,
+    spellLike: [{ spell: 'dancing-lights', perDay: 1, cl: 8 }, { spell: 'detect-thoughts', perDay: 1, cl: 8, dc: 15 }, { spell: 'dispel-magic', perDay: 1, cl: 8 }, { spell: 'entangle', perDay: 1, cl: 8, dc: 14 }, { spell: 'shield', perDay: 1, cl: 8 }],
+    feats: ['dodge', 'weapon-finesse'], skills: { perception: 9 }, languages: ['Common', 'Sylvan'], description: 'A tiny, mischievous winged fey, invisible until it chooses otherwise.',
+  }),
+  unicorn: m('Unicorn', '3', {
+    alignment: 'CG', type: 'magical beast', size: 'large', init: 3, senses: ['darkvision 60', 'low-light vision', 'scent'], speed: { land: 60 },
+    ac: { natural: 3 }, hp: '4d10+12', hd: 4, saves: { fort: 7, ref: 7, will: 6 }, immune: ['charm', 'compulsion', 'poison'],
+    melee: [atk('gore', 8, '1d8+4', { type: PIERCE }), atk('hoof', 5, '1d3+2', { count: 2, type: BLUDG, primary: false })], abilities: { str: 18, dex: 17, con: 16, int: 11, wis: 21, cha: 24 }, bab: 4, cmb: 9, cmd: 22, cmdVs: { trip: 26 },
+    spellLike: [{ spell: 'detect-evil', perDay: Infinity, cl: 9 }, { spell: 'light', perDay: Infinity, cl: 9 }, { spell: 'cure-light-wounds', perDay: 3, cl: 9 }, { spell: 'cure-moderate-wounds', perDay: 1, cl: 9 }, { spell: 'neutralize-poison', perDay: 1, cl: 9, dc: 21 }],
+    special: [{ kind: 'powerfulCharge', damage: '2d8+8' }, { kind: 'magicCircleAgainstEvil' }], languages: ['Common', 'Sylvan'], treasure: 'none', description: 'A noble horned horse that guards sacred forests.',
+  }),
 };
 
 function elementals() {

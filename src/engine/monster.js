@@ -77,6 +77,7 @@ class Monster extends Creature {
       const m = /^(darkvision|blindsense|blindsight|tremorsense) (\d+)/.exec(s);
       if (m) out.push(`${m[1]}:${m[2]}`);
     }
+    out.push(...(this.def.flags || []));
     if (this.def.incorporeal) out.push('incorporeal');
     if (this.def.speed.fly) out.push(`fly:${this.def.speed.fly}`);
     for (const s of this.def.special || []) if (s.kind === 'staggered') out.push('singleAction');
