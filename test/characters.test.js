@@ -169,6 +169,7 @@ test('all base classes level to 20', () => {
     shaman: { scores: ARRAYS.wis, racialBonus: 'wis', choices: { spirit: 'life', familiar: 'toad' } },
     skald: { scores: ARRAYS.cha, racialBonus: 'cha', spells: { known: ['dancing-lights', 'detect-magic', 'light', 'mage-hand', 'cure-light-wounds', 'grease'] } },
     slayer: { scores: ARRAYS.dex, racialBonus: 'dex' },
+    kineticist: { scores: { str: 10, dex: 14, con: 17, int: 10, wis: 12, cha: 8 }, racialBonus: 'con', choices: { element: 'fire', infusion: 'fan-of-flames' } },
     warpriest: { scores: ARRAYS.wis, racialBonus: 'wis', deity: 'the-iron-judge', alignment: 'LN', choices: { blessings: ['law', 'war'] } },
   };
   const { BASE_CLASSES } = require('../src/data/classes');

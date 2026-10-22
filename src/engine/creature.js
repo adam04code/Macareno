@@ -403,7 +403,8 @@ class Creature {
     const max = this.maxHp();
     const before = this.hp.current;
     this.hp.current = Math.min(max, this.hp.current + Math.max(0, Math.floor(amount)));
-    this.hp.nonlethal = Math.max(0, this.hp.nonlethal - Math.floor(amount));
+    // Nonlethal damage from kineticist burn only goes away with rest.
+    this.hp.nonlethal = Math.max((this.resourcesUsed.burn || 0) * this.hitDice(), this.hp.nonlethal - Math.floor(amount));
     if (this.hp.current > 0) this.stable = false;
     this.touch();
     return this.hp.current - before;

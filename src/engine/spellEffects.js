@@ -93,7 +93,7 @@ function touchAttack(caster, target, kind, rng, bonusExtra = 0) {
   const sizeMod = SIZES[caster.size()].mod;
   const mods = caster.stat(['attack', ranged ? 'attack.ranged' : 'attack.melee']).total;
   const bonus = bab + ab + sizeMod + mods + bonusExtra;
-  const touch = kind !== 'ranged';
+  const touch = kind === 'meleeTouch' || kind === 'rangedTouch';
   const ac = target.ac({ touch, tags: [ranged ? 'vsRanged' : 'vsMelee', ...caster.targetTags()] }).total;
   const roll = checks.creatureD20(caster, rng);
   const hit = roll === 20 || (roll !== 1 && roll + bonus >= ac);

@@ -447,6 +447,54 @@ Object.assign(OPTION_GROUPS, {
   },
 });
 
+// Occult Adventures: kineticist.
+const KIN = require('./kineticist');
+/** Wild talents and infusions: element access and level (expanded elements count 4 levels lower). */
+function kineticAccess(c, opt, groupKey) {
+  const lvl = c.prog('kineticistLevel');
+  const els = KIN.elementsOf(c);
+  if (opt.basic || opt.defense) return `${opt.name} is granted by your element, not chosen`;
+  let eff;
+  if (opt.elements === 'universal') eff = lvl;
+  else if (opt.elements.includes(c.choices.element)) eff = lvl;
+  else if (opt.elements.some((e) => els.includes(e))) eff = lvl - 4;
+  else return `${opt.name} requires the ${opt.elements.join(' or ')} element`;
+  if (eff < KIN.minLevelFor(opt.level)) return `${opt.name} (level ${opt.level}) requires kineticist level ${KIN.minLevelFor(opt.level)}${eff < lvl ? ' (+4 for an expanded element)' : ''}`;
+  if (opt.blasts && !opt.blasts.some((b) => KIN.knownBlasts(c).includes(b))) return `${opt.name} requires one of: ${opt.blasts.join(', ')}`;
+  for (const r of opt.needs || []) {
+    const isDefense = Object.values(KIN.ELEMENTS).some((e) => e.defense === r);
+    const has = c.hasOption(groupKey, r) || (isDefense && c.prog('kineticistLevel') >= 2 && require('./featuresOa').defenses(c).some((d) => d === KIN.WILD_TALENTS[r]));
+    if (!has) return `${opt.name} requires ${(KIN.WILD_TALENTS[r] || KIN.INFUSIONS[r] || { name: r }).name}`;
+  }
+  return null;
+}
+/** Simple blast picked with an element (choices.blast / choices.expandedBlast). */
+function pickBlast(c, element, wanted, key) {
+  const known = [].concat(c.choices.blasts || []);
+  const options = KIN.ELEMENTS[element].blasts.filter((b) => !known.includes(b));
+  if (!options.length) return [];
+  const blast = wanted || options[0];
+  if (!options.includes(blast)) return [`Choose a ${element} simple blast (choices.${key}: ${options.join(', ')})`];
+  c.choices.blasts = [...known, blast];
+  return [];
+}
+const ELEMENT_OPTIONS = Object.fromEntries(Object.entries(KIN.ELEMENTS).map(([id, e]) => [id, { ...e, onPick: (c, ch) => pickBlast(c, id, ch.blast, 'blast') }]));
+const EXPANDED_OPTIONS = Object.fromEntries(Object.entries(KIN.ELEMENTS).map(([id, e]) => [id, {
+  ...e, classSkills: undefined, repeatable: true,
+  onPick: (c, ch) => pickBlast(c, id, ch.expandedBlast, 'expandedBlast'),
+  validate: (c) => {
+    const prev = [].concat(c.choices['expanded-element'] || []);
+    if (prev.includes(id) && id !== c.choices.element) return `Only your primary element may be expanded twice`;
+    return null;
+  },
+}]));
+Object.assign(OPTION_GROUPS, {
+  element: { table: ELEMENT_OPTIONS, label: 'element', single: true },
+  'expanded-element': { table: EXPANDED_OPTIONS, label: 'expanded element' },
+  infusion: { table: KIN.INFUSIONS, label: 'infusion', levelProg: 'kineticistLevel', validate: (c, id) => kineticAccess(c, KIN.INFUSIONS[id], 'infusion') },
+  'wild-talent': { table: KIN.WILD_TALENTS, label: 'wild talent', levelProg: 'kineticistLevel', validate: (c, id) => kineticAccess(c, KIN.WILD_TALENTS[id], 'wild-talent') },
+});
+
 const MYSTERY_SPELLS = (id) => (APG.MYSTERIES[id] ? APG.MYSTERIES[id].spells : {});
 const PATRON_SPELLS = (id) => (APG.PATRONS[id] ? Object.fromEntries(APG.PATRONS[id].spells.map((sp, i) => [2 * (i + 1), sp])) : {});
 

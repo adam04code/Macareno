@@ -3,10 +3,11 @@
 const { CLASSES: CORE } = require('./base');
 const { CLASSES: APG } = require('./apg');
 const { CLASSES: ACG } = require('./acg');
+const { CLASSES: OA } = require('./oa');
 const { PRESTIGE } = require('./prestige');
 const { ARCHETYPES } = require('./archetypes');
 
-const BASE = { ...CORE, ...APG, ...ACG };
+const BASE = { ...CORE, ...APG, ...ACG, ...OA };
 const CLASSES = { ...BASE, ...PRESTIGE };
 
 for (const [classId, list] of Object.entries(ARCHETYPES)) {

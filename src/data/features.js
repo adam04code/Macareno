@@ -310,5 +310,6 @@ const FEATURES = {
 
 Object.assign(FEATURES, require('./featuresApg').FEATURES);
 Object.assign(FEATURES, require('./featuresAcg').FEATURES);
+Object.assign(FEATURES, require('./featuresOa').FEATURES);
 
 module.exports = { FEATURES };
