@@ -184,11 +184,11 @@ function applyDamage(defender, packets, opts = {}) {
   for (const p of energy) {
     let amt = p.amount;
     const type = p.type;
-    if (type === 'positive' && !defender.isUndead() && !opts.positiveHurtsLiving) {
+    if (type === 'positive' && !defender.negativeHealed() && !opts.positiveHurtsLiving) {
       details.push({ type, raw: amt, dealt: 0, note: 'positive energy does not harm the living' });
       continue;
     }
-    if (type === 'negative' && defender.isUndead()) {
+    if (type === 'negative' && defender.negativeHealed()) {
       const healed = defender.heal(amt);
       details.push({ type, raw: amt, dealt: 0, healed, note: 'negative energy heals undead' });
       continue;

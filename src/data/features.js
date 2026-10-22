@@ -308,6 +308,29 @@ const FEATURES = {
 
 };
 
+// Loremaster and stalwart defender.
+const stance = (c) => c.hasFlag('defensiveStance');
+Object.assign(FEATURES, {
+  'loremaster-secret': f('Secret', 'Learn a loremaster secret (available by loremaster level + Int mod).', { choice: 'secret' }),
+  lore: f('Lore', 'Add half loremaster level to all Knowledge checks and attempt them untrained.', { modifiers: (c) => require('./core').KNOWLEDGE_SKILLS.map((k) => mod(`skill.${k}`, Math.floor(c.classLevel('loremaster') / 2), 'untyped', 'Lore')) }),
+  'bonus-language-loremaster': f('Bonus Language', 'Learn any one new language.'),
+  'greater-lore': f('Greater Lore', '+10 circumstance bonus on Spellcraft checks to identify magic items.', { modifiers: () => [mod('skill.spellcraft', 10, 'circumstance', 'Greater lore', ['identifyItem'])] }),
+  'true-lore': f('True Lore', 'Once per day: legend lore (1-minute casting) or analyze dweomer.'),
+  'ac-bonus-stalwart': f('AC Bonus', 'Dodge bonus to AC: +1 (+2 at 4th, +3 at 7th, +4 at 10th).', { modifiers: (c) => [mod('ac', c.prog('stalwartAc'), 'dodge', 'Stalwart defender')] }),
+  'defensive-stance': f('Defensive Stance', 'Free action: +2 dodge AC, +4 morale Str and Con, +2 morale Will for 4 + Con mod rounds/day (+2 per level after 1st); cannot move willingly. Fatigued 2 rounds per round afterwards.', {
+    abilities: ['defensive-stance', 'end-defensive-stance'],
+    resources: (c) => ({ defensiveStance: { max: c.prog('stanceRounds') + Math.max(0, c.baseAbilityMod('con')), per: 'day', unit: 'rounds' } }),
+  }),
+  'defensive-power': f('Defensive Power', 'Gain a defensive power (usable in defensive stance).', { choice: 'defensive-power' }),
+  'defensive-power-4': f('Defensive Power', 'Gain a defensive power.', { choice: 'defensive-power' }),
+  'defensive-power-6': f('Defensive Power', 'Gain a defensive power.', { choice: 'defensive-power' }),
+  'defensive-power-8': f('Defensive Power', 'Gain a defensive power.', { choice: 'defensive-power' }),
+  'defensive-power-10': f('Defensive Power', 'Gain a defensive power.', { choice: 'defensive-power' }),
+  'uncanny-dodge-stalwart': f('Uncanny Dodge', 'Cannot be caught flat-footed; keeps Dex bonus to AC when immobilized.', { flags: () => ['uncannyDodge'] }),
+  'damage-reduction-stalwart': f('Damage Reduction', 'DR 1/— (3/— at 7th, 5/— at 10th); stacks with DR from armor.', { dr: (c) => [{ amount: c.classLevel('stalwart-defender') >= 10 ? 5 : c.classLevel('stalwart-defender') >= 7 ? 3 : 1, bypass: '-' }] }),
+  'mobile-defense': f('Mobile Defense', 'Take one 5-ft. step per round without ending the defensive stance.'),
+  'last-word': f('Last Word', 'Once per day in stance: an immediate melee attack (damage dice rolled twice) against a foe whose attack would drop you.'),
+});
 Object.assign(FEATURES, require('./featuresApg').FEATURES);
 Object.assign(FEATURES, require('./featuresAcg').FEATURES);
 Object.assign(FEATURES, require('./featuresOa').FEATURES);

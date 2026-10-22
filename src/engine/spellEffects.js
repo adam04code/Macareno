@@ -268,7 +268,7 @@ const HANDLERS = {
       }
       let amount = rollVariable(evalDice(eff.dice, cl), metamagic, rng);
       if (caster.hasFlag && caster.hasFlag('healersBlessing') && spell.id.startsWith('cure')) amount = Math.floor(amount * 1.5);
-      if (target.isUndead() && eff.harmsUndead) {
+      if (target.negativeHealed() && eff.harmsUndead) {
         if (spell.sr) {
           const sr = checks.spellResistance(caster, target, { rng });
           if (sr.blocked) {
@@ -283,7 +283,7 @@ const HANDLERS = {
         const res = applyDamage(target, [{ amount, type: 'positive' }], { positiveHurtsLiving: false });
         r.damage = res.total;
         r.state = res.state;
-      } else if (!target.isUndead() || !eff.harmsUndead) {
+      } else if (!target.negativeHealed() || !eff.harmsUndead) {
         r.healed = target.heal(amount);
       }
       results.push(r);
@@ -297,7 +297,7 @@ const HANDLERS = {
     for (const target of targets) {
       const r = { target: target.id, name: target.name };
       let amount = rollVariable(evalDice(eff.dice, cl), metamagic, rng);
-      if (target.isUndead() && eff.healsUndead) {
+      if (target.negativeHealed() && eff.healsUndead) {
         r.healed = target.heal(amount);
         results.push(r);
         continue;

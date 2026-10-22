@@ -3,8 +3,8 @@
 const { mod } = require('../engine/modifiers');
 
 /**
- * Races: Core Rulebook races plus the aasimar, tiefling and drow
- * (Advanced Race Guide / Bestiary, OGL).
+ * Races: Core Rulebook races plus the aasimar, tiefling, drow, dhampir,
+ * kitsune and oread (Advanced Race Guide / Bestiary, OGL).
  *
  * abilityMods: fixed racial adjustments. anyBonus: number of +2s chosen freely.
  * modifiers(): passive bonuses. flags: engine-readable traits.
@@ -115,6 +115,28 @@ const RACES = {
     flags: ['darkvision:120', 'lightBlindness', 'poisonUse'], immunities: ['sleep'], srBase: 6,
     spellLikeAbilities: [{ spell: 'dancing-lights', perDay: 1 }, { spell: 'darkness', perDay: 1 }, { spell: 'faerie-fire', perDay: 1 }],
     weaponFamiliarity: ['hand-crossbow', 'rapier', 'short-sword'],
+  },
+  dhampir: {
+    name: 'Dhampir', type: 'humanoid', subtypes: ['dhampir'], size: 'medium', speed: 30,
+    abilityMods: { dex: 2, cha: 2, con: -2 }, languages: ['Common'], bonusLanguages: ['Abyssal', 'Draconic', 'Dwarven', 'Elven', 'Giant', 'Gnome', 'Goblin', 'Infernal', 'Orc'],
+    traits: ['Darkvision 60 ft. and low-light vision.', 'Manipulative: +2 Bluff and Perception.', 'Undead Resistance: +2 on saves vs disease and mind-affecting effects.', 'Light Sensitivity.', 'Negative Energy Affinity: healed by negative energy and harmed by positive energy.', 'Resist Level Drain: negative levels never become permanent.', 'Spell-Like Ability: detect undead 3/day.'],
+    modifiers: (s = 'Dhampir') => [mod('skill.bluff', 2, 'racial', `${s} manipulative`), mod('skill.perception', 2, 'racial', `${s} manipulative`), mod('save', 2, 'racial', `${s} undead resistance`, ['disease', 'mind-affecting'])],
+    flags: ['darkvision:60', 'lowLightVision', 'lightSensitivity', 'negativeEnergyAffinity', 'resistLevelDrain'], spellLikeAbilities: [{ spell: 'detect-undead', perDay: 3 }],
+  },
+  kitsune: {
+    name: 'Kitsune', type: 'humanoid', subtypes: ['kitsune', 'shapechanger'], size: 'medium', speed: 30,
+    abilityMods: { dex: 2, cha: 2, str: -2 }, languages: ['Common', 'Sylvan'], bonusLanguages: 'any',
+    traits: ['Low-light vision.', 'Change Shape: assume one human form (alter self; +10 Disguise to appear human).', 'Agile: +2 Acrobatics.', 'Kitsune Magic: +1 DC of enchantment spells; dancing lights 3/day (Cha 11+).', 'Natural Weapons: bite (1d4) in natural form.'],
+    modifiers: (s = 'Kitsune') => [mod('skill.acrobatics', 2, 'racial', `${s} agile`), mod('spellDC.enchantment', 1, 'racial', `${s} magic`)],
+    flags: ['lowLightVision'], spellLikeAbilities: [{ spell: 'dancing-lights', perDay: 3, minCha: 11 }],
+    naturalAttacks: [{ name: 'Bite', damage: '1d4', type: ['bludgeoning', 'piercing', 'slashing'] }],
+  },
+  oread: {
+    name: 'Oread', type: 'outsider', subtypes: ['native'], size: 'medium', speed: 20,
+    abilityMods: { str: 2, wis: 2, cha: -2 }, languages: ['Common', 'Terran'], bonusLanguages: ['Aquan', 'Auran', 'Dwarven', 'Gnome', 'Ignan', 'Undercommon'],
+    traits: ['Darkvision 60 ft.', 'Slow: base speed 20 ft.', 'Energy Resistance: acid 5.', 'Earth Affinity: +1 caster level for earth elemental bloodline sorcerers and earth domain clerics.', 'Spell-Like Ability: magic stone 1/day.'],
+    modifiers: () => [],
+    flags: ['darkvision:60'], resistances: { acid: 5 }, spellLikeAbilities: [{ spell: 'magic-stone', perDay: 1 }],
   },
 };
 

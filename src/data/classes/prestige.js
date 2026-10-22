@@ -104,6 +104,48 @@ const PRESTIGE = {
     progressions: { combinedSpellsLevel: (l) => Math.min(5, Math.ceil(l / 2)) },
   },
 
+  loremaster: {
+    name: 'Loremaster', hitDie: 6, skillRanks: 4, bab: 'half', saves: { fort: 'poor', ref: 'poor', will: 'good' },
+    classSkills: ['appraise', 'diplomacy', 'handle-animal', 'heal', ...KNOWLEDGE_ALL, 'linguistics', 'perform', 'spellcraft', 'use-magic-device'],
+    requirements: {
+      custom: (c) => {
+        const out = [];
+        if (KNOWLEDGE_ALL.filter((k) => c.skillRanks(k) >= 7).length < 2) out.push('7 ranks in two Knowledge skills');
+        if (!c.featParams('skill-focus').some((p) => KNOWLEDGE_ALL.includes(p))) out.push('Skill Focus (a Knowledge skill)');
+        const { FEATS } = require('../feats');
+        if (c.allFeats().filter((f) => FEATS[f.id] && FEATS[f.id].types.some((t) => t === 'metamagic' || t === 'item-creation')).length < 3) out.push('Three metamagic or item creation feats');
+        const sc = require('../../engine/spellcasting');
+        const { SPELLS } = require('../spells');
+        const div = new Set();
+        let high = false;
+        for (const id of c.casterClasses()) {
+          for (const [lvl, ids] of Object.entries(sc.availableSpells(c, id))) {
+            for (const s of ids) if (SPELLS[s] && SPELLS[s].school === 'divination') { div.add(s); if (Number(lvl) >= 3) high = true; }
+          }
+        }
+        if (div.size < 7 || !high) out.push('Able to cast seven divination spells, one of 3rd level or higher');
+        return out;
+      },
+    },
+    advancesCasting: { levels: range(1, 10), traditions: ['arcane', 'divine'] },
+    features: { 1: ['loremaster-secret'], 2: ['lore'], 3: ['loremaster-secret'], 4: ['bonus-language-loremaster'], 5: ['loremaster-secret'], 6: ['greater-lore'], 7: ['loremaster-secret'], 8: ['bonus-language-loremaster'], 9: ['loremaster-secret'], 10: ['true-lore'] },
+    progressions: { loremasterLevel: (l) => l },
+  },
+
+  'stalwart-defender': {
+    name: 'Stalwart Defender', source: "Advanced Player's Guide", hitDie: 12, skillRanks: 2, bab: 'full', saves: { fort: 'good', ref: 'poor', will: 'good' },
+    classSkills: ['acrobatics', 'climb', 'intimidate', 'perception', 'sense-motive'],
+    proficiencies: { weapons: [], armor: [], shields: [] },
+    requirements: { bab: 7, feats: ['dodge', 'endurance', 'toughness'], custom: (c) => (['light', 'medium'].every((a) => c.isArmorProficient ? c.isArmorProficient(a) : true) ? [] : ['Proficient with light and medium armor']) },
+    features: {
+      1: ['ac-bonus-stalwart', 'defensive-stance'], 2: ['defensive-power'], 3: ['uncanny-dodge-stalwart'], 4: ['defensive-power-4'], 5: ['damage-reduction-stalwart'], 6: ['defensive-power-6'],
+      7: ['improved-uncanny-dodge'], 8: ['defensive-power-8'], 9: ['mobile-defense'], 10: ['defensive-power-10', 'last-word'],
+    },
+    progressions: {
+      stalwartLevel: (l) => l, stanceRounds: (l) => 4 + 2 * (l - 1), stalwartAc: (l) => (l >= 10 ? 4 : l >= 7 ? 3 : l >= 4 ? 2 : 1),
+      improvedUncannyDodgeLevels: (l) => (l >= 7 ? l : 0),
+    },
+  },
 };
 
 for (const [id, c] of Object.entries(PRESTIGE)) {

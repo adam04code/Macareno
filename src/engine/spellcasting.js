@@ -91,6 +91,8 @@ function slotsPerDay(char, classId) {
     let n = base === Infinity ? Infinity : base + bonusSpells(am, l);
     if (l > 0 && d.domainSlots && (typeof d.domainSlots !== 'string' || char.choices[d.domainSlots])) n += 1;
     if (l > 0 && d.schoolSlots && char.choices.school && char.choices.school !== 'universalist') n += 1;
+    // Loremaster newfound arcana: bonus slots for the character's first spellcasting class.
+    if (l > 0 && char.casterClasses()[0] === classId) for (const id of [].concat(char.choices.secret || [])) n += ((OPTIONS.OPTION_GROUPS.secret.table[id] || {}).bonusSlots || {})[l] || 0;
     out.push(n);
   }
   return out;

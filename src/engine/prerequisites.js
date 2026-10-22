@@ -74,6 +74,8 @@ function check(char, req = {}, ctx = {}) {
   if (req.special && !(char.choices.specialRequirements || []).includes(ctx.classId)) fail(`Special: ${req.special}`);
   if (req.naturalAttacks && char.naturalAttacks && char.naturalAttacks().length < req.naturalAttacks) fail(`${req.naturalAttacks} natural attacks`);
   if (req.flySpeed && !char.flySpeed()) fail('Fly speed');
+  // Requirements too specific for the generic keys (loremaster): a function returning failure strings.
+  if (req.custom) (req.custom(char) || []).forEach(fail);
   return { ok: failures.length === 0, failures };
 }
 

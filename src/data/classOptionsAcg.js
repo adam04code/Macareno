@@ -305,7 +305,7 @@ const SHAMAN_HEXES = {
   'hampering-hex': spiritHex('battle', 'Hampering Hex', 'Creature within 30 ft. takes -2 AC and CMD (-4 at 8th) for rounds equal to your level (1 round on a Will save).', { abilities: ['hampering-hex'] }),
   'bone-lock': spiritHex('bones', 'Bone Lock', 'Creature within 30 ft. is staggered 1 round (Fort negates; longer at 8th and 16th).', { abilities: ['bone-lock'] }),
   'bone-ward': spiritHex('bones', 'Bone Ward', 'Touched ally gains +2 deflection AC (+3 at 8th, +4 at 16th).', { abilities: ['bone-ward'] }),
-  'deathly-being': spiritHex('bones', 'Deathly Being', 'Healed by negative energy and harmed by positive energy as an undead; +4 vs death and energy drain at 8th.', { flags: () => ['healedByNegative'] }),
+  'deathly-being': spiritHex('bones', 'Deathly Being', 'Healed by negative energy and harmed by positive energy as an undead; +4 vs death and energy drain at 8th.', { flags: () => ['negativeEnergyAffinity'] }),
   'fearful-gaze': spiritHex('bones', 'Fearful Gaze', 'Creature within 30 ft. is shaken 1 round (frightened at 8th, panicked at 16th); Will negates.', { abilities: ['fearful-gaze'] }),
   'grave-sight': spiritHex('bones', 'Grave Sight', 'See the life status of creatures within 30 ft.'),
   'cinder-dance-hex': spiritHex('flame', 'Cinder Dance', '+10 ft. speed; Nimble Moves at 5th and Acrobatic Steps at 10th.', { modifiers: () => [mod('speed', 10, 'untyped', 'Cinder dance')] }),

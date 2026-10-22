@@ -757,6 +757,7 @@ class Character extends Creature {
         });
       }
     };
+    for (const n of this.raceDef().naturalAttacks || []) add(n);
     for (const f of this.features()) {
       const def = FEATURES[f.key];
       if (def && def.naturalAttacks) def.naturalAttacks(this).forEach(add);

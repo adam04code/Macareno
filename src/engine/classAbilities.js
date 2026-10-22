@@ -155,6 +155,47 @@ const ABILITIES = {
       return { refunded: unused };
     },
   },
+  // ------------------------------------------------------------ Stalwart defender
+  'defensive-stance': {
+    name: 'Defensive Stance', action: 'free', target: 'self',
+    use({ user, options }) {
+      if (user.hasFlag('defensiveStance')) throw err('Already in a defensive stance');
+      if (user.hasFlag('raging')) throw err('Cannot enter a defensive stance while raging');
+      const roused = user.hasOption('defensive-power', 'roused-defense');
+      if ((user.hasCondition('fatigued') && !roused) || user.hasCondition('exhausted')) throw err('Cannot enter a defensive stance while fatigued');
+      const rounds = Math.min(options.rounds || user.resourceRemaining('defensiveStance'), user.resourceRemaining('defensiveStance'));
+      if (rounds < 1) throw err('No defensive stance rounds remaining');
+      spend(user, 'defensiveStance', rounds);
+      user.addEffect(makeEffect({
+        key: 'ability:defensive-stance', name: 'Defensive Stance', kind: 'ability', remaining: rounds, flags: ['defensiveStance', 'noWillingMovement', ...(roused ? ['immune:fatigued'] : [])],
+        modifiers: [mod('str', 4, 'morale', 'Defensive stance'), mod('con', 4, 'morale', 'Defensive stance'), mod('save.will', 2, 'morale', 'Defensive stance'), mod('ac', 2, 'dodge', 'Defensive stance')],
+        onEnd: [roused ? { condition: 'exhausted', rounds: rounds * 100 } : { condition: 'fatigued', rounds: rounds * 2 }], data: { rounds },
+      }));
+      return { rounds };
+    },
+  },
+  'end-defensive-stance': {
+    name: 'End Defensive Stance', action: 'free', target: 'self',
+    use({ user }) {
+      const e = user.effects.find((x) => x.key === 'ability:defensive-stance');
+      if (!e) throw err('Not in a defensive stance');
+      const unused = Math.max(0, e.remaining || 0);
+      user.resourcesUsed.defensiveStance = Math.max(0, (user.resourcesUsed.defensiveStance || 0) - unused);
+      const used = (e.data.rounds || 0) - unused;
+      user.removeEffect(e.id);
+      if (user.hasOption('defensive-power', 'roused-defense')) user.addCondition('exhausted', Math.max(1, used * 100), { name: 'Roused defense' });
+      else user.addCondition('fatigued', Math.max(1, used * 2), { name: 'Defensive stance' });
+      return { refunded: unused };
+    },
+  },
+  'renewed-defense': {
+    name: 'Renewed Defense', action: 'standard', target: 'self', resource: (u, id) => `power:${id}`, perDay: () => 1,
+    use({ user, rng }) {
+      if (!user.hasFlag('defensiveStance')) throw err('Must be in a defensive stance');
+      const n = Math.min(5, 1 + Math.floor((user.classLevel('stalwart-defender') - 2) / 2));
+      return { healed: user.heal(dice.total(`${n}d8`, rng) + user.abilityMod('con')) };
+    },
+  },
   'powerful-blow': {
     name: 'Powerful Blow', action: 'free', target: 'self',
     use({ user }) {
@@ -211,7 +252,7 @@ const ABILITIES = {
       const n = Math.max(1, half(lvl));
       const max = user.hasFeature('holy-champion');
       const amt = max ? n * 6 : dice.total(`${n}d6`, rng);
-      if (t.isUndead()) {
+      if (t.negativeHealed()) {
         const atk = t.id === user.id ? { hit: true } : touchAttack(user, t, 'meleeTouch', rng);
         if (!atk.hit) return { target: t.id, note: 'missed' };
         const s = checks.savingThrow(t, 'will', { dc: 10 + half(lvl) + user.abilityMod('cha'), rng });
@@ -739,10 +780,10 @@ function channel(ctx, diceCount, dc, energy) {
   const results = [];
   for (const t of pool) {
     if (exclude.has(t.id)) continue;
-    const living = t.isLiving();
-    const healsThis = (energy === 'positive' && living) || (energy === 'negative' && t.isUndead());
+    const living = t.isLiving() && !t.hasFlag('negativeEnergyAffinity');
+    const healsThis = (energy === 'positive' && living) || (energy === 'negative' && t.negativeHealed());
     if (mode === 'heal' && healsThis) results.push({ target: t.id, healed: t.heal(amt) });
-    if (mode === 'harm' && !healsThis && (energy === 'positive' ? t.isUndead() : living)) {
+    if (mode === 'harm' && !healsThis && (energy === 'positive' ? t.negativeHealed() : living)) {
       const s = checks.savingThrow(t, 'will', { dc, rng, tags: ['channel'], circumstance: t.def && t.def.channelResistance ? t.def.channelResistance : 0 });
       const res = applyDamage(t, [{ amount: s.success ? half(amt) : amt, type: energy }], { positiveHurtsLiving: false });
       results.push({ target: t.id, save: s, damage: res.total, state: res.state });

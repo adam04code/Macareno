@@ -447,6 +447,42 @@ Object.assign(OPTION_GROUPS, {
   },
 });
 
+// Loremaster secrets (loremaster level + Int mod) and stalwart defender powers.
+const loreLvl = (c) => c.classLevel('loremaster') + c.baseAbilityMod('int');
+const secret = (name, need, description, extra = {}) => o(name, description, { validate: (c) => (loreLvl(c) < need ? `${name} needs loremaster level + Int mod ${need}` : null), ...extra });
+const SECRETS = {
+  'instant-mastery': secret('Instant Mastery', 1, '4 ranks in a skill in which you have no ranks.'),
+  'secret-health': secret('Secret Health', 2, 'Toughness as a bonus feat.', { grantsFeats: ['toughness'] }),
+  'secrets-of-inner-strength': secret('Secrets of Inner Strength', 3, '+2 bonus on Will saves.', { modifiers: () => [mod('save.will', 2, 'untyped', 'Secrets of inner strength')] }),
+  'lore-of-true-stamina': secret('The Lore of True Stamina', 4, '+2 bonus on Fortitude saves.', { modifiers: () => [mod('save.fort', 2, 'untyped', 'Lore of true stamina')] }),
+  'secret-knowledge-of-avoidance': secret('Secret Knowledge of Avoidance', 5, '+2 bonus on Reflex saves.', { modifiers: () => [mod('save.ref', 2, 'untyped', 'Secret knowledge of avoidance')] }),
+  'weapon-trick': secret('Weapon Trick', 6, '+1 bonus on attack rolls.', { modifiers: () => [mod('attack', 1, 'untyped', 'Weapon trick')] }),
+  'dodge-trick': secret('Dodge Trick', 7, '+1 dodge bonus to AC.', { modifiers: () => [mod('ac', 1, 'dodge', 'Dodge trick')] }),
+  'applicable-knowledge': secret('Applicable Knowledge', 8, 'Any one feat.', { bonusFeat: 'any' }),
+  'newfound-arcana': secret('Newfound Arcana', 9, 'One bonus 1st-level spell slot.', { bonusSlots: { 1: 1 } }),
+  'more-newfound-arcana': secret('More Newfound Arcana', 10, 'One bonus 2nd-level spell slot.', { bonusSlots: { 2: 1 } }),
+};
+const inStance = (c) => c.hasFlag('defensiveStance');
+const DEFENSIVE_POWERS = {
+  bulwark: o('Bulwark', 'Add your armor check penalty to the DC to Bluff you and to Acrobatics checks to move past you.'),
+  'clear-mind-stalwart': o('Clear Mind', 'Once per stance, reroll a failed Will save.'),
+  'fearless-defense': o('Fearless Defense', 'Immune to shaken and frightened while in stance.', { minLevel: 4, flags: (c) => (inStance(c) ? ['immune:shaken', 'immune:frightened'] : []) }),
+  'halting-blow': o('Halting Blow', 'A foe you hit with an attack of opportunity provoked by movement stops moving.', { requires: ['bulwark'], flags: (c) => (inStance(c) ? ['haltingBlow'] : []) }),
+  immobile: o('Immobile', 'Add your class level to CMD against bull rush, overrun, pull, push and grapples to move you.', { minLevel: 4, modifiers: (c) => (inStance(c) ? [mod('cmd', c.classLevel('stalwart-defender'), 'untyped', 'Immobile', ['bullRush', 'overrun', 'reposition', 'grapple'])] : []) }),
+  'increased-damage-reduction-stalwart': o('Increased Damage Reduction', 'DR/— +1 while in stance (may be taken twice).', { minLevel: 6, repeatable: true, dr: (c) => (inStance(c) ? [{ amount: 1, bypass: '-' }] : []) }),
+  intercept: o('Intercept', 'Once per round, immediate action: a hit on an adjacent ally hits you instead.'),
+  'internal-fortitude-stalwart': o('Internal Fortitude', 'Immune to sickened and nauseated while in stance.', { flags: (c) => (inStance(c) ? ['immune:sickened', 'immune:nauseated'] : []) }),
+  'mighty-resilience': o('Mighty Resilience', 'Once per stance, negate the extra damage of a critical hit or sneak attack.', { minLevel: 6 }),
+  'renewed-defense': o('Renewed Defense', 'Once per day, standard action: heal 1d8 + Con (+1d8 per two levels above 2nd).', { abilities: ['renewed-defense'] }),
+  'roused-defense': o('Roused Defense', 'Enter stance while fatigued and immune to fatigue during it; exhausted 10 minutes per round afterwards.'),
+  smash: o('Smash', 'One extra shield bash or slam (BAB -5) per round: 1d4 + 1/2 Str.'),
+  'unexpected-strike': o('Unexpected Strike', 'Once per stance, an attack of opportunity against a foe that enters a square you threaten.', { minLevel: 4 }),
+};
+Object.assign(OPTION_GROUPS, {
+  secret: { table: SECRETS, label: 'loremaster secret' },
+  'defensive-power': { table: DEFENSIVE_POWERS, label: 'defensive power', levelProg: 'stalwartLevel' },
+});
+
 // Occult Adventures: kineticist.
 const KIN = require('./kineticist');
 /** Wild talents and infusions: element access and level (expanded elements count 4 levels lower). */

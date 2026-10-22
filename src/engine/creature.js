@@ -165,6 +165,8 @@ class Creature {
   }
 
   isUndead() { return this.creatureType() === 'undead'; }
+  /** Healed by negative and harmed by positive energy (undead, dhampir negative energy affinity). */
+  negativeHealed() { return this.isUndead() || this.hasFlag('negativeEnergyAffinity'); }
   isLiving() { return !['undead', 'construct'].includes(this.creatureType()); }
 
   // ------------------------------------------------------------ abilities
